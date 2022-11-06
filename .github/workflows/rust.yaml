@@ -1,0 +1,52 @@
+name: Rust
+
+on:
+  pull_request:
+    paths:
+      - "**.proto"
+      - "**.rs"
+      - "**.sql"
+      - "**.toml"
+      - Cargo.lock
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_NET_GIT_FETCH_WITH_CLI: "true"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    container: ghcr.io/bitskico/rust-sdk
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Configure sccache
+        uses: actions/github-script@v6
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      - name: Sync Rustup with rust-toolchain.toml
+        run: rustup show
+
+      - name: Run cargo test
+        run: cargo test --all-features
+
+      - name: Run cargo clippy
+        uses: actions-rs/clippy-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --all-features -- --deny warnings
+
+      - name: Run cargo fmt
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all -- --check
