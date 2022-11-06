@@ -4,6 +4,7 @@ use http::header::AUTHORIZATION;
 use http::{HeaderMap, HeaderValue};
 use reqwest::Url;
 use reqwest_middleware::ClientWithMiddleware;
+use serde::Serialize;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -96,9 +97,12 @@ pub struct ApnsClient {
 }
 
 impl ApnsClient {
-    pub async fn post(&self, request: ApnsRequest) -> Result<ApnsResponse> {
+    pub async fn post<T>(&self, request: ApnsRequest<T>) -> Result<ApnsResponse>
+    where
+        T: Serialize,
+    {
         let url = self.base_url.join(&request.device_token)?;
-        let (headers, request): (_, ApnsPayload) = request.try_into()?;
+        let (headers, request): (_, ApnsPayload<T>) = request.try_into()?;
 
         let req = self
             .client
@@ -114,7 +118,7 @@ impl ApnsClient {
 }
 
 #[derive(Debug, Default, PartialEq, Eq)]
-pub struct ApnsRequest {
+pub struct ApnsRequest<T> {
     /// The hex-encoded device token.
     pub device_token: String,
 
@@ -239,12 +243,18 @@ pub struct ApnsRequest {
     /// in the notification summary. See
     /// [`relevanceScore`](https://developer.apple.com/documentation/usernotifications/unnotificationcontent/3821031-relevancescore).
     pub relevance_score: Option<f64>,
+
+    /// Additional data to send.
+    pub user_info: Option<T>,
 }
 
-impl TryFrom<ApnsRequest> for (HeaderMap<HeaderValue>, ApnsPayload) {
+impl<T> TryFrom<ApnsRequest<T>> for (HeaderMap<HeaderValue>, ApnsPayload<T>)
+where
+    T: Serialize,
+{
     type Error = Error;
 
-    fn try_from(this: ApnsRequest) -> Result<Self> {
+    fn try_from(this: ApnsRequest<T>) -> Result<Self> {
         let mut headers = HeaderMap::new();
 
         let _ = headers.insert(APNS_PUSH_TYPE, this.apns_push_type.into());
@@ -284,6 +294,7 @@ impl TryFrom<ApnsRequest> for (HeaderMap<HeaderValue>, ApnsPayload) {
             target_content_id: this.target_content_id,
             interruption_level: this.interruption_level,
             relevance_score: this.relevance_score,
+            user_info: this.user_info,
         };
 
         Ok((headers, payload))
