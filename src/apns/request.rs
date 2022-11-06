@@ -84,7 +84,7 @@ where
 #[serde(untagged)]
 pub enum ApnsAlert {
     Body(String),
-    Alert(Alert),
+    Alert(Box<Alert>),
 }
 
 #[derive(Debug, PartialEq, Eq, Deserialize, Serialize)]
@@ -165,7 +165,7 @@ impl From<Alert> for ApnsAlert {
                 return ApnsAlert::Body(body);
             }
         }
-        ApnsAlert::Alert(this)
+        ApnsAlert::Alert(Box::new(this))
     }
 }
 
