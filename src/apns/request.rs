@@ -9,7 +9,10 @@ use serde_with::{serde_as, skip_serializing_none};
 #[serde(rename_all = "kebab-case")]
 #[serde_as]
 #[skip_serializing_none]
-pub struct ApnsPayload {
+pub struct ApnsPayload<T>
+where
+    T: Serialize,
+{
     /// The information for displaying an alert.
     pub alert: Option<ApnsAlert>,
 
@@ -71,13 +74,17 @@ pub struct ApnsPayload {
     /// in the notification summary. See
     /// [`relevanceScore`](https://developer.apple.com/documentation/usernotifications/unnotificationcontent/3821031-relevancescore).
     pub relevance_score: Option<f64>,
+
+    /// Additional data to send.
+    #[serde(flatten)]
+    pub user_info: Option<T>,
 }
 
 #[derive(Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum ApnsAlert {
     Body(String),
-    Alert(Alert),
+    Alert(Box<Alert>),
 }
 
 #[derive(Debug, PartialEq, Eq, Deserialize, Serialize)]
@@ -158,7 +165,7 @@ impl From<Alert> for ApnsAlert {
                 return ApnsAlert::Body(body);
             }
         }
-        ApnsAlert::Alert(this)
+        ApnsAlert::Alert(Box::new(this))
     }
 }
 
