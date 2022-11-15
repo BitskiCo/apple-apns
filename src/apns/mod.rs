@@ -15,7 +15,7 @@ use self::header::{
     APNS_PUSH_TYPE, APNS_TOPIC,
 };
 use self::request::{Alert, ApnsPayload, InterruptionLevel, Sound};
-use self::response::ApnsResponse;
+use self::response::Reason;
 
 pub mod header;
 pub mod request;
@@ -97,14 +97,14 @@ pub struct ApnsClient {
 }
 
 impl ApnsClient {
-    pub async fn post<T>(&self, request: ApnsRequest<T>) -> Result<ApnsResponse>
+    pub async fn post<T>(&self, request: ApnsRequest<T>) -> Result<()>
     where
         T: Serialize,
     {
         let url = self.base_url.join(&request.device_token)?;
         let (headers, request): (_, ApnsPayload<T>) = request.try_into()?;
 
-        let req = self
+        let res = self
             .client
             .post(url)
             .headers(headers)
@@ -112,8 +112,12 @@ impl ApnsClient {
             .send()
             .await?;
 
-        let response = req.json().await?;
-        Ok(response)
+        if res.status().is_success() {
+            Ok(())
+        } else {
+            let reason: Reason = res.json::<Reason>().await?;
+            return Err(reason.into());
+        }
     }
 }
 
