@@ -1,10 +1,14 @@
 #![doc = include_str!("../README.md")]
 
-pub mod apns;
+pub mod client;
+pub mod header;
+pub mod payload;
+pub mod reason;
+pub mod request;
 pub mod result;
 
-pub use apns::header;
-pub use apns::reason::*;
-pub use apns::request::*;
-pub use apns::*;
+pub use client::*;
+pub use payload::*;
+pub use reason::*;
+pub use request::*;
 pub use result::*;

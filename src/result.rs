@@ -1,4 +1,4 @@
-use crate::apns::reason::Reason;
+use crate::reason::Reason;
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
