@@ -14,12 +14,12 @@ use self::header::{
     ApnsPriority, ApnsPushType, APNS_COLLAPSE_ID, APNS_EXPIRATION, APNS_ID, APNS_PRIORITY,
     APNS_PUSH_TYPE, APNS_TOPIC,
 };
+use self::reason::Reason;
 use self::request::{Alert, ApnsPayload, InterruptionLevel, Sound};
-use self::response::Reason;
 
 pub mod header;
+pub mod reason;
 pub mod request;
-pub mod response;
 
 pub const DEVELOPMENT_SERVER: &str = "https://api.sandbox.push.apple.com";
 pub const PRODUCTION_SERVER: &str = "https://api.push.apple.com";

@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, skip_serializing_none, TimestampMilliSeconds};
 use time::OffsetDateTime;
 
+/// APNS error response reason JSON body.
 #[serde_as]
 #[skip_serializing_none]
 #[derive(thiserror::Error, Debug, PartialEq, Eq, Deserialize, Serialize)]
