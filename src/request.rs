@@ -1,30 +1,11 @@
-use std::time::Duration;
-
-use http::header::AUTHORIZATION;
 use http::{HeaderMap, HeaderValue};
-use reqwest::Url;
-use reqwest_middleware::ClientWithMiddleware;
 use serde::Serialize;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::header::*;
+use crate::payload::*;
 use crate::result::{Error, Result};
-
-use self::header::{
-    ApnsPriority, ApnsPushType, APNS_COLLAPSE_ID, APNS_EXPIRATION, APNS_ID, APNS_PRIORITY,
-    APNS_PUSH_TYPE, APNS_TOPIC,
-};
-use self::reason::Reason;
-use self::request::{Alert, ApnsPayload, InterruptionLevel, Sound};
-
-pub mod header;
-pub mod reason;
-pub mod request;
-
-pub const DEVELOPMENT_SERVER: &str = "https://api.sandbox.push.apple.com";
-pub const PRODUCTION_SERVER: &str = "https://api.push.apple.com";
-
-pub const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
 
 /*
 pub enum Authorization {
@@ -43,83 +24,6 @@ pub enum Authorization {
     Certificate,
 }
 */
-
-#[derive(Debug, Default, Clone)]
-pub struct ApnsClientBuilder<'a> {
-    pub server: Option<&'a str>,
-    pub client: Option<ClientWithMiddleware>,
-    pub provider_token: Option<&'a str>,
-}
-
-impl<'a> ApnsClientBuilder<'a> {
-    pub fn new() -> Self {
-        Default::default()
-    }
-
-    pub fn build(self) -> Result<ApnsClient> {
-        let base_url = self.server.unwrap_or(PRODUCTION_SERVER);
-        let base_url = format!("{base_url}/3/device/").parse()?;
-
-        let client = if let Some(client) = self.client {
-            client
-        } else {
-            let mut client = reqwest::Client::builder()
-                .user_agent(USER_AGENT)
-                .pool_idle_timeout(None)
-                .http2_prior_knowledge()
-                .http2_keep_alive_interval(Some(Duration::from_secs(60 * 60)))
-                .http2_keep_alive_timeout(Duration::from_secs(60))
-                .http2_keep_alive_while_idle(true)
-                // .min_tls_version(Version::TLS_1_2)
-                ;
-
-            if let Some(provider_token) = self.provider_token {
-                let mut headers = HeaderMap::new();
-                let mut auth_value: HeaderValue = format!("bearer {provider_token}").parse()?;
-                auth_value.set_sensitive(true);
-                headers.insert(AUTHORIZATION, auth_value);
-                client = client.default_headers(headers);
-            }
-
-            let client = client.build()?;
-
-            reqwest_middleware::ClientBuilder::new(client).build()
-        };
-
-        Ok(ApnsClient { base_url, client })
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct ApnsClient {
-    base_url: Url,
-    client: ClientWithMiddleware,
-}
-
-impl ApnsClient {
-    pub async fn post<T>(&self, request: ApnsRequest<T>) -> Result<()>
-    where
-        T: Serialize,
-    {
-        let url = self.base_url.join(&request.device_token)?;
-        let (headers, request): (_, ApnsPayload<T>) = request.try_into()?;
-
-        let res = self
-            .client
-            .post(url)
-            .headers(headers)
-            .json(&request)
-            .send()
-            .await?;
-
-        if res.status().is_success() {
-            Ok(())
-        } else {
-            let reason: Reason = res.json::<Reason>().await?;
-            Err(reason.into())
-        }
-    }
-}
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct ApnsRequest<T> {
