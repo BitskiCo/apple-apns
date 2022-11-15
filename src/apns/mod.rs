@@ -164,7 +164,7 @@ pub struct ApnsRequest<T> {
     ///
     /// Specify 1 to prioritize the device’s power considerations over all other
     /// factors for delivery, and prevent awakening the device.
-    pub apns_priority: Option<ApnsPriority>,
+    pub apns_priority: ApnsPriority,
 
     /// The topic for the notification. In general, the topic is your app’s
     /// bundle ID/app ID. It can have a suffix based on the type of push
@@ -213,14 +213,14 @@ pub struct ApnsRequest<T> {
     /// specify the value `1` and don’t include the `alert`, `badge`, or `sound`
     /// keys in your payload. See [Pushing Background Updates to Your
     /// App](https://developer.apple.com/documentation/usernotifications/setting_up_a_remote_notification_server/pushing_background_updates_to_your_app).
-    pub content_available: Option<bool>,
+    pub content_available: bool,
 
     /// The notification service app extension flag. If the value is `1`, the
     /// system passes the notification to your notification service app
     /// extension before delivery. Use your extension to modify the
     /// notification’s content. See [Modifying Content in Newly Delivered
     /// Notifications](https://developer.apple.com/documentation/usernotifications/modifying_content_in_newly_delivered_notifications).
-    pub mutable_content: Option<bool>,
+    pub mutable_content: bool,
 
     /// The identifier of the window brought forward. The value of this key will
     /// be populated on the
@@ -269,8 +269,8 @@ where
             let _ = headers.insert(APNS_EXPIRATION.clone(), apns_expiration);
         }
 
-        if let Some(apns_priority) = this.apns_priority {
-            let _ = headers.insert(APNS_PRIORITY.clone(), apns_priority.into());
+        if this.apns_priority != ApnsPriority::default() {
+            let _ = headers.insert(APNS_PRIORITY.clone(), this.apns_priority.into());
         }
 
         if let Some(apns_topic) = this.apns_topic {
@@ -283,10 +283,31 @@ where
             let _ = headers.insert(APNS_COLLAPSE_ID.clone(), apns_collapse_id);
         }
 
+        let is_critical = this
+            .interruption_level
+            .as_ref()
+            .map(|il| *il == InterruptionLevel::Critical)
+            .unwrap_or_default();
+
+        let is_critical_sound = this
+            .sound
+            .as_ref()
+            .map(|sound| sound.critical)
+            .unwrap_or_default();
+
+        if is_critical != is_critical_sound {
+            return Err(Error::CriticalSound);
+        }
+
+        let sound = this.sound.map(|mut sound| {
+            sound.critical = is_critical || is_critical_sound;
+            sound.into()
+        });
+
         let payload = ApnsPayload {
             alert: this.alert.map(Into::into),
             badge: this.badge,
-            sound: this.sound.map(Into::into),
+            sound,
             thread_id: this.thread_id,
             category: this.category,
             content_available: this.content_available,
