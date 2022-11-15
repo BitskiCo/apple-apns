@@ -1,15 +1,19 @@
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, skip_serializing_none};
+use serde_with::{serde_as, skip_serializing_none, BoolFromInt};
+
+fn is_false(v: &bool) -> bool {
+    !v
+}
 
 /// Put the JSON payload with the notification’s content into the body of your
 /// request. The JSON payload must not be compressed and is limited to a maximum
 /// size of 4 KB (4096 bytes). For a Voice over Internet Protocol (VoIP)
 /// notification, the maximum size is 5 KB (5120 bytes).
-#[derive(Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
-#[serde(rename_all = "kebab-case")]
 #[serde_as]
 #[skip_serializing_none]
-pub struct ApnsPayload<T>
+#[derive(Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct ApnsPayload<T = ()>
 where
     T: Serialize,
 {
@@ -42,16 +46,18 @@ where
     /// specify the value `1` and don’t include the `alert`, `badge`, or `sound`
     /// keys in your payload. See [Pushing Background Updates to Your
     /// App](https://developer.apple.com/documentation/usernotifications/setting_up_a_remote_notification_server/pushing_background_updates_to_your_app).
+    #[serde(skip_serializing_if = "is_false")]
     #[serde_as(as = "BoolFromInt")]
-    pub content_available: Option<bool>,
+    pub content_available: bool,
 
     /// The notification service app extension flag. If the value is `1`, the
     /// system passes the notification to your notification service app
     /// extension before delivery. Use your extension to modify the
     /// notification’s content. See [Modifying Content in Newly Delivered
     /// Notifications](https://developer.apple.com/documentation/usernotifications/modifying_content_in_newly_delivered_notifications).
+    #[serde(skip_serializing_if = "is_false")]
     #[serde_as(as = "BoolFromInt")]
-    pub mutable_content: Option<bool>,
+    pub mutable_content: bool,
 
     /// The identifier of the window brought forward. The value of this key will
     /// be populated on the
@@ -169,7 +175,7 @@ impl From<Alert> for ApnsAlert {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum ApnsSound {
     /// The name of a sound file in your app’s main bundle or in the
@@ -180,37 +186,47 @@ pub enum ApnsSound {
     /// [`UNNotificationSound`](https://developer.apple.com/documentation/usernotifications/unnotificationsound).
     Name(String),
 
-    Sound(Sound),
+    Critical(Sound),
 }
 
-#[derive(Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde_as]
 #[skip_serializing_none]
+#[derive(Debug, PartialEq, Deserialize, Serialize)]
 pub struct Sound {
     /// The critical alert flag. Set to `1` to enable the critical alert.
+    #[serde(skip_serializing_if = "is_false")]
     #[serde_as(as = "BoolFromInt")]
-    critical: Option<bool>,
+    pub critical: bool,
 
     /// The name of a sound file in your app’s main bundle or in the
     /// `Library/Sounds` folder of your app’s container directory. Specify
     /// the string `default` to play the system sound. For information about
     /// how to prepare sounds, see
     /// [`UNNotificationSound`](https://developer.apple.com/documentation/usernotifications/unnotificationsound).
-    name: Option<String>,
+    pub name: String,
 
     /// The volume for the critical alert’s sound. Set this to a value
     /// between `0` (silent) and `1` (full volume).
-    volume: Option<f64>,
+    pub volume: f64,
+}
+
+impl Default for Sound {
+    fn default() -> Self {
+        Self {
+            critical: false,
+            name: "default".into(),
+            volume: 1f64,
+        }
+    }
 }
 
 impl From<Sound> for ApnsSound {
     fn from(this: Sound) -> Self {
-        if this.critical.is_none() && this.volume.is_none() {
-            if let Some(name) = this.name {
-                return ApnsSound::Name(name);
-            }
+        if !this.critical {
+            ApnsSound::Name(this.name)
+        } else {
+            ApnsSound::Critical(this)
         }
-        ApnsSound::Sound(this)
     }
 }
 

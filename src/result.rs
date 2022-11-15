@@ -97,6 +97,9 @@ pub enum Error {
     #[error("{0}")]
     ApnsOther(String),
 
+    #[error("interruption level does not match sound critical flag")]
+    CriticalSound,
+
     #[error(transparent)]
     InvalidHeaderValue(#[from] http::header::InvalidHeaderValue),
 

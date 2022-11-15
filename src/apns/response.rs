@@ -1,13 +1,13 @@
 use http::StatusCode;
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, skip_serializing_none};
+use serde_with::{serde_as, skip_serializing_none, TimestampMilliSeconds};
 use time::OffsetDateTime;
 
 use crate::result::Error;
 
-#[derive(Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
 #[serde_as]
 #[skip_serializing_none]
+#[derive(Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
 pub struct ApnsResponse {
     /// The error code indicating the reason for the failure.
     pub reason: Option<Reason>,
@@ -15,7 +15,7 @@ pub struct ApnsResponse {
     /// The time, in milliseconds since Epoch, at which APNs confirmed the token
     /// was no longer valid for the topic. This key is included only when the
     /// error in the `:status` field is 410.
-    #[serde_as(as = "TimestampMilliSeconds<i64>")]
+    #[serde_as(as = "Option<TimestampMilliSeconds>")]
     pub timestamp: Option<OffsetDateTime>,
 }
 
