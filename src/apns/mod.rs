@@ -116,7 +116,7 @@ impl ApnsClient {
             Ok(())
         } else {
             let reason: Reason = res.json::<Reason>().await?;
-            return Err(reason.into());
+            Err(reason.into())
         }
     }
 }
