@@ -2,9 +2,9 @@ use std::time::Duration;
 
 use http::{header, HeaderValue};
 use reqwest::tls::Version;
-use reqwest::Url;
 #[cfg(feature = "rustls")]
 use reqwest::{Certificate, Identity};
+use reqwest::{ClientBuilder, Url};
 use reqwest_middleware::ClientWithMiddleware;
 use serde::Serialize;
 
@@ -13,7 +13,7 @@ use crate::reason::Reason;
 use crate::request::ApnsRequest;
 use crate::result::{Error, Result};
 #[cfg(feature = "jwt")]
-use crate::token::{TokenFactory, TokenFactoryBuilder};
+use crate::token::TokenFactory;
 
 pub const DEVELOPMENT_SERVER: &str = "https://api.sandbox.push.apple.com";
 pub const PRODUCTION_SERVER: &str = "https://api.push.apple.com";
@@ -89,9 +89,43 @@ impl<'a> ApnsClientBuilder<'a> {
         Default::default()
     }
 
-    pub fn build(self) -> Result<ApnsClient> {
+    pub fn build(&self) -> Result<ApnsClient> {
+        let client = self.reqwest_client_builder()?.build()?;
+        self.with_reqwest_client(client)
+    }
+
+    pub fn with_reqwest_client(&self, client: reqwest::Client) -> Result<ApnsClient> {
+        let client = reqwest_middleware::ClientBuilder::new(client).build();
+        self.with_reqwest_middleware_client(client)
+    }
+
+    pub fn with_reqwest_middleware_client(
+        &self,
+        client: ClientWithMiddleware,
+    ) -> Result<ApnsClient> {
         let base_url = format!("{}/3/device/", self.server).parse()?;
 
+        #[cfg(feature = "jwt")]
+        let token_factory = if let Some(Authentication::Token {
+            key_id,
+            key_pem,
+            team_id,
+        }) = self.authentication
+        {
+            Some(TokenFactory::new(key_id, key_pem, team_id)?)
+        } else {
+            None
+        };
+
+        Ok(ApnsClient {
+            base_url,
+            client,
+            #[cfg(feature = "jwt")]
+            token_factory,
+        })
+    }
+
+    pub fn reqwest_client_builder(&self) -> Result<ClientBuilder> {
         #[allow(unused_mut)]
         let mut builder = reqwest::Client::builder()
             .user_agent(self.user_agent)
@@ -103,7 +137,7 @@ impl<'a> ApnsClientBuilder<'a> {
             .min_tls_version(Version::TLS_1_2);
 
         #[cfg(feature = "rustls")]
-        if let Some(ca) = self.ca {
+        if let Some(ca) = &self.ca {
             let cert = match ca {
                 CertificateAuthority::Pem(pem) => Certificate::from_pem(pem)?,
                 CertificateAuthority::Der(der) => Certificate::from_der(der)?,
@@ -111,44 +145,13 @@ impl<'a> ApnsClientBuilder<'a> {
             builder = builder.add_root_certificate(cert);
         }
 
-        #[cfg(feature = "jwt")]
-        let mut token_factory = None;
-
-        #[cfg(any(feature = "rustls", feature = "jwt"))]
-        if let Some(auth) = self.authentication {
-            match auth {
-                #[cfg(feature = "rustls")]
-                Authentication::Certificate { ca } => {
-                    let identity = Identity::from_pem(ca)?;
-                    builder = builder.identity(identity);
-                }
-                #[cfg(feature = "jwt")]
-                Authentication::Token {
-                    key_id,
-                    key_pem,
-                    team_id,
-                } => {
-                    token_factory = Some(
-                        TokenFactoryBuilder {
-                            key_id,
-                            key_pem,
-                            team_id,
-                        }
-                        .build()?,
-                    );
-                }
-            }
+        #[cfg(feature = "rustls")]
+        if let Some(Authentication::Certificate { ca }) = self.authentication {
+            let identity = Identity::from_pem(ca)?;
+            builder = builder.identity(identity);
         }
 
-        let client = builder.build()?;
-        let client = reqwest_middleware::ClientBuilder::new(client).build();
-
-        Ok(ApnsClient {
-            base_url,
-            client,
-            #[cfg(feature = "jwt")]
-            token_factory,
-        })
+        Ok(builder)
     }
 }
 

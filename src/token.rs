@@ -19,23 +19,23 @@ struct Cache {
     create_time: SystemTime,
 }
 
-#[derive(Debug, Clone)]
-pub struct TokenFactoryBuilder<'a> {
-    pub key_id: &'a str,
-    pub key_pem: &'a [u8],
-    pub team_id: &'a str,
+pub struct TokenFactory {
+    key: EncodingKey,
+    header: Header,
+    iss: String,
+    cache: RwLock<Cache>,
 }
 
-impl<'a> TokenFactoryBuilder<'a> {
-    pub fn build(&self) -> Result<TokenFactory> {
-        let key = EncodingKey::from_ec_pem(self.key_pem)?;
+impl TokenFactory {
+    pub fn new(key_id: &str, key_pem: &[u8], team_id: &str) -> Result<Self> {
+        let key = EncodingKey::from_ec_pem(key_pem)?;
         let header = Header {
             alg: Algorithm::ES256,
-            kid: Some(self.key_id.into()),
+            kid: Some(key_id.into()),
             ..Default::default()
         };
 
-        let iss = self.team_id.into();
+        let iss = team_id.into();
 
         let cache = RwLock::new(Cache {
             jwt: Default::default(),
@@ -49,16 +49,7 @@ impl<'a> TokenFactoryBuilder<'a> {
             cache,
         })
     }
-}
 
-pub struct TokenFactory {
-    key: EncodingKey,
-    header: Header,
-    iss: String,
-    cache: RwLock<Cache>,
-}
-
-impl TokenFactory {
     pub fn get(&self) -> Result<Arc<String>> {
         let cache = self.cache.read().unwrap();
         if SystemTime::now().duration_since(cache.create_time)? < JWT_REFRESH_PERIOD {
