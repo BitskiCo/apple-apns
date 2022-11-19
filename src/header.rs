@@ -2,6 +2,9 @@ use http::header::{HeaderName, HeaderValue};
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 
+pub const PAYLOAD_SIZE_LIMIT: usize = 4096;
+pub const VOIP_PAYLOAD_SIZE_LIMIT: usize = 5120;
+
 /// (Required for watchOS 6 and later; recommended for macOS, iOS, tvOS, and
 /// iPadOS) The value of this header must accurately reflect the contents of
 /// your notification’s payload. If there’s a mismatch, or if the header is
@@ -269,6 +272,16 @@ impl From<ApnsPushType> for HeaderValue {
             ApnsPushType::Complication => COMPLICATION.clone(),
             ApnsPushType::Fileprovider => FILEPROVIDER.clone(),
             ApnsPushType::Mdm => MDM.clone(),
+        }
+    }
+}
+
+impl ApnsPushType {
+    pub fn payload_size_limit(&self) -> usize {
+        if *self == ApnsPushType::Voip {
+            VOIP_PAYLOAD_SIZE_LIMIT
+        } else {
+            PAYLOAD_SIZE_LIMIT
         }
     }
 }
