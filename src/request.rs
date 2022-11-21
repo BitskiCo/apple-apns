@@ -7,26 +7,8 @@ use crate::header::*;
 use crate::payload::*;
 use crate::result::{Error, Result};
 
-/*
-pub enum Authorization {
-    /// (Required for token-based authentication) The value of this header is
-    /// bearer <provider_token>, where <provider_token> is the encrypted token
-    /// that authorizes you to send notifications for the specified topic. APNs
-    /// ignores this header if you use certificate-based authentication. For
-    /// more information, see [Establishing a Token-Based Connection to
-    /// APNs](https://developer.apple.com/documentation/usernotifications/setting_up_a_remote_notification_server/establishing_a_token-based_connection_to_apns).
-    Bearer(String),
-
-    /// If you’re using certificate-based authentication, you send your provider
-    /// certificate to APNs when setting up your TLS connection. For more
-    /// information, see [Establishing a Certificate-Based Connection to
-    /// APNs](https://developer.apple.com/documentation/usernotifications/setting_up_a_remote_notification_server/establishing_a_certificate-based_connection_to_apns).
-    Certificate,
-}
-*/
-
 #[derive(Debug, Default, PartialEq, Eq)]
-pub struct ApnsRequest<T> {
+pub struct ApnsRequest<T = ()> {
     /// The hex-encoded device token.
     pub device_token: String,
 
