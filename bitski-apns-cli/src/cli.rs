@@ -12,13 +12,13 @@ use uuid::Uuid;
 #[command(author, version, about)]
 #[command(group(
     ArgGroup::new("authentication")
-        .args(["ca_pem_file", "key_id", "key_pem_file", "team_id"])
+        .args(["client_pem_file", "key_id", "key_pem_file", "team_id"])
         .required(true)
 ), group(
     ArgGroup::new("certificate")
         .conflicts_with("token")
-        .arg("ca_pem_file")
-        .requires("ca_pem_file")
+        .arg("client_pem_file")
+        .requires("client_pem_file")
 ), group(
     ArgGroup::new("token")
         .conflicts_with("certificate")
@@ -31,6 +31,9 @@ pub struct Cli {
     pub ca_pem_file: Option<PathBuf>,
 
     #[arg(long, env)]
+    pub client_pem_file: Option<PathBuf>,
+
+    #[arg(long, env)]
     pub key_id: Option<String>,
 
     #[arg(long, env)]
@@ -38,6 +41,12 @@ pub struct Cli {
 
     #[arg(long, env)]
     pub team_id: Option<String>,
+
+    #[arg(long, env)]
+    pub server: Option<String>,
+
+    #[arg(long, env)]
+    pub user_agent: Option<String>,
 
     /// The hex-encoded device token.
     #[arg(long, env)]
