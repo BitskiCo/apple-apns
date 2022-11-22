@@ -94,7 +94,7 @@ pub enum ApnsAlert {
     Alert(Box<Alert>),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
 #[skip_serializing_none]
 pub struct Alert {

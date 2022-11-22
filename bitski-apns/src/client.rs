@@ -30,7 +30,7 @@ pub enum Authentication<'a> {
     /// APNs](https://developer.apple.com/documentation/usernotifications/setting_up_a_remote_notification_server/establishing_a_certificate-based_connection_to_apns).
     #[cfg(feature = "rustls")]
     #[cfg_attr(docsrs, doc(cfg(feature = "rustls")))]
-    Certificate { ca: &'a [u8] },
+    Certificate { client_pem: &'a [u8] },
 
     /// (Required for token-based authentication) The value of this header is
     /// bearer <provider_token>, where <provider_token> is the encrypted token
@@ -146,8 +146,8 @@ impl<'a> ApnsClientBuilder<'a> {
         }
 
         #[cfg(feature = "rustls")]
-        if let Some(Authentication::Certificate { ca }) = self.authentication {
-            let identity = Identity::from_pem(ca)?;
+        if let Some(Authentication::Certificate { client_pem }) = self.authentication {
+            let identity = Identity::from_pem(client_pem)?;
             builder = builder.identity(identity);
         }
 
