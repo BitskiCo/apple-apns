@@ -1,4 +1,4 @@
-#![doc = include_str!("../README.md")]
+#![doc = include_str!("../../README.md")]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
 pub mod client;
@@ -12,6 +12,8 @@ pub mod result;
 pub mod token;
 
 pub use client::*;
+pub use header::{ApnsPriority, ApnsPushType};
+pub use payload::InterruptionLevel;
 pub use reason::*;
 pub use request::*;
 pub use result::*;

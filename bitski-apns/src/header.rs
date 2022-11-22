@@ -1,5 +1,6 @@
 use http::header::{HeaderName, HeaderValue};
 use serde::{Deserialize, Serialize};
+use serde_plain::{derive_display_from_serialize, derive_fromstr_from_deserialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 
 pub const PAYLOAD_SIZE_LIMIT: usize = 4096;
@@ -164,7 +165,7 @@ pub static PRIORITY_PRIORITIZE_POWER: HeaderValue = HeaderValue::from_static("1"
 
 /// The `apns-push-type` header field has the following valid values. The
 /// descriptions below describe when and how to use these values.
-#[derive(Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum ApnsPushType {
     /// Use the `alert` push type for notifications that trigger a user
@@ -276,6 +277,9 @@ impl From<ApnsPushType> for HeaderValue {
     }
 }
 
+derive_fromstr_from_deserialize!(ApnsPushType);
+derive_display_from_serialize!(ApnsPushType);
+
 impl ApnsPushType {
     pub fn payload_size_limit(&self) -> usize {
         if *self == ApnsPushType::Voip {
@@ -286,7 +290,7 @@ impl ApnsPushType {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Deserialize_repr, Serialize_repr)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize_repr, Serialize_repr)]
 #[repr(u8)]
 pub enum ApnsPriority {
     /// Send the notification immediately.
@@ -315,3 +319,6 @@ impl From<ApnsPriority> for HeaderValue {
         }
     }
 }
+
+derive_fromstr_from_deserialize!(ApnsPriority);
+derive_display_from_serialize!(ApnsPriority);
