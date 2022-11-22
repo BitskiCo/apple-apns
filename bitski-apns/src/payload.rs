@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use serde_plain::{derive_display_from_serialize, derive_fromstr_from_deserialize};
 use serde_with::{serde_as, skip_serializing_none, BoolFromInt};
 
 fn is_false(v: &bool) -> bool {
@@ -11,7 +12,7 @@ fn is_false(v: &bool) -> bool {
 /// notification, the maximum size is 5 KB (5120 bytes).
 #[serde_as]
 #[skip_serializing_none]
-#[derive(Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct ApnsPayload<T = ()>
 where
@@ -86,14 +87,14 @@ where
     pub user_info: Option<T>,
 }
 
-#[derive(Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum ApnsAlert {
     Body(String),
     Alert(Box<Alert>),
 }
 
-#[derive(Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
 #[skip_serializing_none]
 pub struct Alert {
@@ -175,7 +176,7 @@ impl From<Alert> for ApnsAlert {
     }
 }
 
-#[derive(Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum ApnsSound {
     /// The name of a sound file in your app’s main bundle or in the
@@ -191,7 +192,7 @@ pub enum ApnsSound {
 
 #[serde_as]
 #[skip_serializing_none]
-#[derive(Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub struct Sound {
     /// The critical alert flag. Set to `1` to enable the critical alert.
     #[serde(skip_serializing_if = "is_false")]
@@ -230,7 +231,7 @@ impl From<Sound> for ApnsSound {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum InterruptionLevel {
     /// The system presents the notification immediately, lights up the screen,
@@ -250,3 +251,6 @@ pub enum InterruptionLevel {
     /// controls.
     TimeSensitive,
 }
+
+derive_fromstr_from_deserialize!(InterruptionLevel);
+derive_display_from_serialize!(InterruptionLevel);
