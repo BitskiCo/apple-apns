@@ -12,7 +12,7 @@ use uuid::Uuid;
 #[command(author, version, about)]
 #[command(group(
     ArgGroup::new("authentication")
-        .args(["client_pem_file", "key_id", "key_pem_file", "team_id"])
+        .args(["client_pem_file", "key_pem_file"])
         .required(true)
 ), group(
     ArgGroup::new("certificate")
@@ -54,28 +54,28 @@ pub struct Cli {
 
     /// The push type of the notification to send.
     #[arg(long, env, default_value_t = ApnsPushType::Alert)]
-    pub apns_push_type: ApnsPushType,
+    pub push_type: ApnsPushType,
 
     /// A canonical UUID that is the unique ID for the notification.
     #[arg(long, env)]
-    pub apns_id: Option<Uuid>,
+    pub id: Option<Uuid>,
 
     /// The date at which the notification is no longer valid.
     #[arg(long, env, value_parser = parse_timestamp)]
-    pub apns_expiration: Option<OffsetDateTime>,
+    pub expiration: Option<OffsetDateTime>,
 
     /// The priority of the notification.
     #[arg(long, env, default_value_t = Default::default())]
-    pub apns_priority: ApnsPriority,
+    pub priority: ApnsPriority,
 
     /// The topic for the notification, e.g. bundle ID or app ID.
     #[arg(long, env)]
-    pub apns_topic: Option<String>,
+    pub topic: Option<String>,
 
     /// An identifier you use to coalesce multiple notifications into a single
     /// notification for the user.
     #[arg(long, env)]
-    pub apns_collapse_id: Option<String>,
+    pub collapse_id: Option<String>,
 
     /// The title of the notification.
     #[arg(long, env)]

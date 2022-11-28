@@ -11,7 +11,7 @@ pub use cli::*;
 
 #[allow(unused_assignments)]
 pub async fn main() -> Result<()> {
-    dotenvy::dotenv()?;
+    dotenvy::dotenv().ok();
 
     let cli = Cli::parse();
 
@@ -66,12 +66,12 @@ pub async fn main() -> Result<()> {
 
     let request = ApnsRequest {
         device_token: cli.device_token,
-        apns_push_type: cli.apns_push_type,
-        apns_id: cli.apns_id,
-        apns_expiration: cli.apns_expiration,
-        apns_priority: cli.apns_priority,
-        apns_topic: cli.apns_topic,
-        apns_collapse_id: cli.apns_collapse_id,
+        apns_push_type: cli.push_type,
+        apns_id: cli.id,
+        apns_expiration: cli.expiration,
+        apns_priority: cli.priority,
+        apns_topic: cli.topic,
+        apns_collapse_id: cli.collapse_id,
         alert: Some(Alert {
             title: cli.title,
             subtitle: cli.subtitle,
@@ -91,7 +91,8 @@ pub async fn main() -> Result<()> {
         user_info: cli.user_info,
     };
 
-    client.post(request).await?;
+    let apns_id = client.post(request).await?;
+    println!("{}", apns_id.as_hyphenated());
 
     Ok(())
 }
