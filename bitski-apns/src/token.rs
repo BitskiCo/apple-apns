@@ -19,6 +19,15 @@ struct Cache {
     create_time: SystemTime,
 }
 
+impl Default for Cache {
+    fn default() -> Self {
+        Self {
+            jwt: Default::default(),
+            create_time: UNIX_EPOCH,
+        }
+    }
+}
+
 pub struct TokenFactory {
     key: EncodingKey,
     header: Header,
@@ -37,17 +46,16 @@ impl TokenFactory {
 
         let iss = team_id.into();
 
-        let cache = RwLock::new(Cache {
-            jwt: Default::default(),
-            create_time: UNIX_EPOCH,
-        });
-
-        Ok(TokenFactory {
+        let factory = TokenFactory {
             key,
             header,
             iss,
-            cache,
-        })
+            cache: Default::default(),
+        };
+
+        *factory.cache.write().unwrap() = factory.create()?;
+
+        Ok(factory)
     }
 
     pub fn get(&self) -> Result<Arc<String>> {

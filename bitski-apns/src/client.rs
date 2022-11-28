@@ -7,7 +7,9 @@ use reqwest::{Certificate, Identity};
 use reqwest::{ClientBuilder, Url};
 use reqwest_middleware::ClientWithMiddleware;
 use serde::Serialize;
+use uuid::Uuid;
 
+use crate::header::APNS_ID;
 use crate::payload::*;
 use crate::reason::Reason;
 use crate::request::ApnsRequest;
@@ -137,18 +139,24 @@ impl<'a> ApnsClientBuilder<'a> {
             .min_tls_version(Version::TLS_1_2);
 
         #[cfg(feature = "rustls")]
-        if let Some(ca) = &self.ca {
-            let cert = match ca {
-                CertificateAuthority::Pem(pem) => Certificate::from_pem(pem)?,
-                CertificateAuthority::Der(der) => Certificate::from_der(der)?,
-            };
-            builder = builder.add_root_certificate(cert);
-        }
+        {
+            // Force rustls
+            builder = builder.use_rustls_tls();
 
-        #[cfg(feature = "rustls")]
-        if let Some(Authentication::Certificate { client_pem }) = self.authentication {
-            let identity = Identity::from_pem(client_pem)?;
-            builder = builder.identity(identity);
+            // Add root certificate
+            if let Some(ca) = &self.ca {
+                let cert = match ca {
+                    CertificateAuthority::Pem(pem) => Certificate::from_pem(pem)?,
+                    CertificateAuthority::Der(der) => Certificate::from_der(der)?,
+                };
+                builder = builder.add_root_certificate(cert);
+            }
+
+            // Configure client certificate
+            if let Some(Authentication::Certificate { client_pem }) = self.authentication {
+                let identity = Identity::from_pem(client_pem)?;
+                builder = builder.identity(identity);
+            }
         }
 
         Ok(builder)
@@ -168,7 +176,8 @@ impl ApnsClient {
         ApnsClientBuilder::new()
     }
 
-    pub async fn post<T>(&self, request: ApnsRequest<T>) -> Result<()>
+    /// Creates a push notification and returns the APNS ID.
+    pub async fn post<T>(&self, request: ApnsRequest<T>) -> Result<Uuid>
     where
         T: Serialize,
     {
@@ -206,7 +215,13 @@ impl ApnsClient {
                 Err(err.into())
             }
         } else {
-            Ok(())
+            let apns_id = res
+                .headers()
+                .get(&APNS_ID)
+                .and_then(|v| v.to_str().ok())
+                .and_then(|s| s.parse().ok())
+                .unwrap_or_default();
+            Ok(apns_id)
         }
     }
 }
