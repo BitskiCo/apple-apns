@@ -2,7 +2,7 @@ use std::fs;
 
 use anyhow::Result;
 use bitski_apns::payload::{Alert, Sound};
-use bitski_apns::{ApnsClientBuilder, Authentication, CertificateAuthority, Request};
+use bitski_apns::{Authentication, CertificateAuthority, ClientBuilder, Request};
 use clap::Parser;
 
 mod cli;
@@ -15,7 +15,7 @@ pub async fn main() -> Result<()> {
 
     let cli = Cli::parse();
 
-    let mut builder = ApnsClientBuilder::new();
+    let mut builder = ClientBuilder::new();
 
     if let Some(server) = &cli.server {
         builder.server = server;

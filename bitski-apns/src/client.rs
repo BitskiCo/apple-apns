@@ -2,9 +2,9 @@ use std::time::Duration;
 
 use http::{header, HeaderValue};
 use reqwest::tls::Version;
+use reqwest::Url;
 #[cfg(feature = "rustls")]
 use reqwest::{Certificate, Identity};
-use reqwest::{ClientBuilder, Url};
 use reqwest_middleware::ClientWithMiddleware;
 use serde::Serialize;
 use uuid::Uuid;
@@ -58,7 +58,7 @@ pub enum CertificateAuthority<'a> {
 }
 
 #[derive(Debug, Clone)]
-pub struct ApnsClientBuilder<'a> {
+pub struct ClientBuilder<'a> {
     pub server: &'a str,
     pub user_agent: &'a str,
 
@@ -71,7 +71,7 @@ pub struct ApnsClientBuilder<'a> {
     pub authentication: Option<Authentication<'a>>,
 }
 
-impl<'a> Default for ApnsClientBuilder<'a> {
+impl<'a> Default for ClientBuilder<'a> {
     fn default() -> Self {
         Self {
             server: PRODUCTION_SERVER,
@@ -86,7 +86,7 @@ impl<'a> Default for ApnsClientBuilder<'a> {
     }
 }
 
-impl<'a> ApnsClientBuilder<'a> {
+impl<'a> ClientBuilder<'a> {
     pub fn new() -> Self {
         Default::default()
     }
@@ -124,7 +124,7 @@ impl<'a> ApnsClientBuilder<'a> {
         })
     }
 
-    pub fn reqwest_client_builder(&self) -> Result<ClientBuilder> {
+    pub fn reqwest_client_builder(&self) -> Result<reqwest::ClientBuilder> {
         #[allow(unused_mut)]
         let mut builder = reqwest::Client::builder()
             .user_agent(self.user_agent)
@@ -169,8 +169,8 @@ pub struct Client {
 }
 
 impl Client {
-    pub fn builder<'a>() -> ApnsClientBuilder<'a> {
-        ApnsClientBuilder::new()
+    pub fn builder<'a>() -> ClientBuilder<'a> {
+        ClientBuilder::new()
     }
 
     /// Creates a push notification and returns the APNS ID.
