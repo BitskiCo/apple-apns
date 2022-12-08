@@ -12,7 +12,7 @@ pub mod result;
 pub mod token;
 
 pub use client::*;
-pub use header::{ApnsPriority, ApnsPushType};
+pub use header::{Priority, PushType};
 pub use payload::InterruptionLevel;
 pub use reason::*;
 pub use request::*;

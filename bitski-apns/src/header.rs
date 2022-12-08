@@ -167,7 +167,7 @@ pub static PRIORITY_PRIORITIZE_POWER: HeaderValue = HeaderValue::from_static("1"
 /// descriptions below describe when and how to use these values.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
-pub enum ApnsPushType {
+pub enum PushType {
     /// Use the `alert` push type for notifications that trigger a user
     /// interaction—for example, an alert, badge, or sound. If you set this push
     /// type, the `apns-topic` header field must use your app’s bundle ID as the
@@ -257,32 +257,32 @@ pub enum ApnsPushType {
     Mdm,
 }
 
-impl Default for ApnsPushType {
+impl Default for PushType {
     fn default() -> Self {
         Self::Alert
     }
 }
 
-impl From<ApnsPushType> for HeaderValue {
-    fn from(apns_push_type: ApnsPushType) -> Self {
+impl From<PushType> for HeaderValue {
+    fn from(apns_push_type: PushType) -> Self {
         match apns_push_type {
-            ApnsPushType::Alert => ALERT.clone(),
-            ApnsPushType::Background => BACKGROUND.clone(),
-            ApnsPushType::Location => LOCATION.clone(),
-            ApnsPushType::Voip => VOIP.clone(),
-            ApnsPushType::Complication => COMPLICATION.clone(),
-            ApnsPushType::Fileprovider => FILEPROVIDER.clone(),
-            ApnsPushType::Mdm => MDM.clone(),
+            PushType::Alert => ALERT.clone(),
+            PushType::Background => BACKGROUND.clone(),
+            PushType::Location => LOCATION.clone(),
+            PushType::Voip => VOIP.clone(),
+            PushType::Complication => COMPLICATION.clone(),
+            PushType::Fileprovider => FILEPROVIDER.clone(),
+            PushType::Mdm => MDM.clone(),
         }
     }
 }
 
-derive_fromstr_from_deserialize!(ApnsPushType);
-derive_display_from_serialize!(ApnsPushType);
+derive_fromstr_from_deserialize!(PushType);
+derive_display_from_serialize!(PushType);
 
-impl ApnsPushType {
+impl PushType {
     pub fn payload_size_limit(&self) -> usize {
-        if *self == ApnsPushType::Voip {
+        if *self == PushType::Voip {
             VOIP_PAYLOAD_SIZE_LIMIT
         } else {
             PAYLOAD_SIZE_LIMIT
@@ -292,7 +292,7 @@ impl ApnsPushType {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize_repr, Serialize_repr)]
 #[repr(u8)]
-pub enum ApnsPriority {
+pub enum Priority {
     /// Send the notification immediately.
     Immediate = 10,
 
@@ -304,21 +304,21 @@ pub enum ApnsPriority {
     PrioritizePower = 1,
 }
 
-impl Default for ApnsPriority {
+impl Default for Priority {
     fn default() -> Self {
         Self::Immediate
     }
 }
 
-impl From<ApnsPriority> for HeaderValue {
-    fn from(this: ApnsPriority) -> Self {
+impl From<Priority> for HeaderValue {
+    fn from(this: Priority) -> Self {
         match this {
-            ApnsPriority::Immediate => PRIORITY_IMMEDIATE.clone(),
-            ApnsPriority::ConsiderPower => PRIORITY_CONSIDER_POWER.clone(),
-            ApnsPriority::PrioritizePower => PRIORITY_PRIORITIZE_POWER.clone(),
+            Priority::Immediate => PRIORITY_IMMEDIATE.clone(),
+            Priority::ConsiderPower => PRIORITY_CONSIDER_POWER.clone(),
+            Priority::PrioritizePower => PRIORITY_PRIORITIZE_POWER.clone(),
         }
     }
 }
 
-derive_fromstr_from_deserialize!(ApnsPriority);
-derive_display_from_serialize!(ApnsPriority);
+derive_fromstr_from_deserialize!(Priority);
+derive_display_from_serialize!(Priority);

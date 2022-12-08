@@ -12,7 +12,7 @@ use uuid::Uuid;
 use crate::header::APNS_ID;
 use crate::payload::*;
 use crate::reason::Reason;
-use crate::request::ApnsRequest;
+use crate::request::Request;
 use crate::result::{Error, Result};
 #[cfg(feature = "jwt")]
 use crate::token::TokenFactory;
@@ -91,20 +91,17 @@ impl<'a> ApnsClientBuilder<'a> {
         Default::default()
     }
 
-    pub fn build(&self) -> Result<ApnsClient> {
+    pub fn build(&self) -> Result<Client> {
         let client = self.reqwest_client_builder()?.build()?;
         self.with_reqwest_client(client)
     }
 
-    pub fn with_reqwest_client(&self, client: reqwest::Client) -> Result<ApnsClient> {
+    pub fn with_reqwest_client(&self, client: reqwest::Client) -> Result<Client> {
         let client = reqwest_middleware::ClientBuilder::new(client).build();
         self.with_reqwest_middleware_client(client)
     }
 
-    pub fn with_reqwest_middleware_client(
-        &self,
-        client: ClientWithMiddleware,
-    ) -> Result<ApnsClient> {
+    pub fn with_reqwest_middleware_client(&self, client: ClientWithMiddleware) -> Result<Client> {
         let base_url = format!("{}/3/device/", self.server).parse()?;
 
         #[cfg(feature = "jwt")]
@@ -119,7 +116,7 @@ impl<'a> ApnsClientBuilder<'a> {
             None
         };
 
-        Ok(ApnsClient {
+        Ok(Client {
             base_url,
             client,
             #[cfg(feature = "jwt")]
@@ -163,7 +160,7 @@ impl<'a> ApnsClientBuilder<'a> {
     }
 }
 
-pub struct ApnsClient {
+pub struct Client {
     base_url: Url,
     client: ClientWithMiddleware,
 
@@ -171,19 +168,19 @@ pub struct ApnsClient {
     token_factory: Option<TokenFactory>,
 }
 
-impl ApnsClient {
+impl Client {
     pub fn builder<'a>() -> ApnsClientBuilder<'a> {
         ApnsClientBuilder::new()
     }
 
     /// Creates a push notification and returns the APNS ID.
-    pub async fn post<T>(&self, request: ApnsRequest<T>) -> Result<Uuid>
+    pub async fn post<T>(&self, request: Request<T>) -> Result<Uuid>
     where
         T: Serialize,
     {
         let url = self.base_url.join(&request.device_token)?;
-        let payload_size_limit = request.apns_push_type.payload_size_limit();
-        let (mut headers, payload): (_, ApnsPayload<T>) = request.try_into()?;
+        let payload_size_limit = request.push_type.payload_size_limit();
+        let (mut headers, payload): (_, Payload<T>) = request.try_into()?;
         headers.insert(
             header::CONTENT_TYPE,
             HeaderValue::from_static("application/json"),

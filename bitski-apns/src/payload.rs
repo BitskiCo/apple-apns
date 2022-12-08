@@ -1,4 +1,8 @@
-use serde::{Deserialize, Serialize};
+use serde::{
+    de::{self, MapAccess, Visitor},
+    ser::{SerializeMap, SerializeStruct},
+    Deserialize, Serialize,
+};
 use serde_plain::{derive_display_from_serialize, derive_fromstr_from_deserialize};
 use serde_with::{serde_as, skip_serializing_none, BoolFromInt};
 
@@ -14,12 +18,12 @@ fn is_false(v: &bool) -> bool {
 #[skip_serializing_none]
 #[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
-pub struct ApnsPayload<T = ()>
+pub struct Payload<T = ()>
 where
     T: Serialize,
 {
     /// The information for displaying an alert.
-    pub alert: Option<ApnsAlert>,
+    pub alert: Option<Alert>,
 
     /// The number to display in a badge on your app’s icon. Specify `0` to
     /// remove the current badge, if any.
@@ -28,7 +32,7 @@ where
     /// The name of a sound file in your app’s main bundle or in the
     /// `Library/Sounds` folder of your app’s container directory or a
     /// dictionary that contains sound information for critical alerts.
-    pub sound: Option<ApnsSound>,
+    pub sound: Option<Sound>,
 
     /// An app-specific identifier for grouping related notifications. This
     /// value corresponds to the
@@ -87,16 +91,7 @@ where
     pub user_info: Option<T>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
-#[serde(untagged)]
-pub enum ApnsAlert {
-    Body(String),
-    Alert(Box<Alert>),
-}
-
-#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
-#[serde(rename_all = "kebab-case")]
-#[skip_serializing_none]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Alert {
     /// The title of the notification. Apple Watch displays this string in
     /// the short look notification interface. Specify a string that’s
@@ -108,7 +103,7 @@ pub struct Alert {
     pub subtitle: Option<String>,
 
     /// The content of the alert message.
-    pub body: Option<String>,
+    pub body: String,
 
     /// The name of the launch image file to display. If the user chooses to
     /// launch your app, the contents of the specified image or storyboard
@@ -156,47 +151,161 @@ pub struct Alert {
     pub loc_args: Option<Vec<String>>,
 }
 
-impl From<Alert> for ApnsAlert {
-    fn from(this: Alert) -> Self {
-        if this.title.is_none()
-            && this.subtitle.is_none()
-            && this.launch_image.is_none()
-            && this.title_loc_key.is_none()
-            && this.title_loc_args.is_none()
-            && this.subtitle_loc_key.is_none()
-            && this.subtitle_loc_args.is_none()
-            && this.loc_key.is_none()
-            && this.loc_args.is_none()
-        {
-            if let Some(body) = this.body {
-                return ApnsAlert::Body(body);
+impl<'de> Deserialize<'de> for Alert {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        struct AlertVisitor;
+
+        impl<'de> Visitor<'de> for AlertVisitor {
+            type Value = Alert;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                write!(formatter, "an alert struct")
+            }
+
+            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                Ok(Alert {
+                    body: v.into(),
+                    ..Default::default()
+                })
+            }
+
+            fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                Ok(Alert {
+                    body: v,
+                    ..Default::default()
+                })
+            }
+
+            fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+            where
+                A: MapAccess<'de>,
+            {
+                let mut alert = Alert::default();
+                while let Some(key) = map.next_key::<&str>()? {
+                    match key {
+                        "title" => alert.title = map.next_value()?,
+                        "subtitle" => alert.subtitle = map.next_value()?,
+                        "body" => alert.body = map.next_value()?,
+                        "title-loc-key" => alert.title_loc_key = map.next_value()?,
+                        "title-loc-args" => alert.title_loc_args = map.next_value()?,
+                        "subtitle-loc-key" => alert.subtitle_loc_key = map.next_value()?,
+                        "subtitle-loc-args" => alert.subtitle_loc_args = map.next_value()?,
+                        "loc-key" => alert.loc_key = map.next_value()?,
+                        "loc-args" => alert.loc_args = map.next_value()?,
+                        field => {
+                            return Err(de::Error::unknown_field(
+                                field,
+                                &[
+                                    "title",
+                                    "subtitle",
+                                    "body",
+                                    "title-loc-key",
+                                    "title-loc-args",
+                                    "subtitle-loc-key",
+                                    "subtitle-loc-args",
+                                    "loc-key",
+                                    "loc-args",
+                                ],
+                            ));
+                        }
+                    }
+                }
+                Ok(alert)
             }
         }
-        ApnsAlert::Alert(Box::new(this))
+
+        deserializer.deserialize_any(AlertVisitor)
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
-#[serde(untagged)]
-pub enum ApnsSound {
-    /// The name of a sound file in your app’s main bundle or in the
-    /// `Library/Sounds` folder of your app’s container directory. Specify the
-    /// string `default` to play the system sound. Use this key for regular
-    /// notifications. For critical alerts, use the sound dictionary instead.
-    /// For information about how to prepare sounds, see
-    /// [`UNNotificationSound`](https://developer.apple.com/documentation/usernotifications/unnotificationsound).
-    Name(String),
+impl Serialize for Alert {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        if self.title.is_none()
+            && self.subtitle.is_none()
+            && self.launch_image.is_none()
+            && self.title_loc_key.is_none()
+            && self.title_loc_args.is_none()
+            && self.subtitle_loc_key.is_none()
+            && self.subtitle_loc_args.is_none()
+            && self.loc_key.is_none()
+            && self.loc_args.is_none()
+        {
+            serializer.serialize_str(&self.body)
+        } else {
+            let mut len = 1;
+            if self.title.is_some() {
+                len += 1;
+            }
+            if self.subtitle.is_some() {
+                len += 1;
+            }
+            if self.title_loc_key.is_some() {
+                len += 1;
+            }
+            if self.title_loc_args.is_some() {
+                len += 1;
+            }
+            if self.subtitle_loc_key.is_some() {
+                len += 1;
+            }
+            if self.subtitle_loc_args.is_some() {
+                len += 1;
+            }
+            if self.loc_key.is_some() {
+                len += 1;
+            }
+            if self.loc_args.is_some() {
+                len += 1;
+            }
 
-    Critical(Sound),
+            let mut alert = serializer.serialize_map(Some(len))?;
+
+            if let Some(title) = &self.title {
+                alert.serialize_entry("title", title)?;
+            }
+            if let Some(subtitle) = &self.subtitle {
+                alert.serialize_entry("subtitle", subtitle)?;
+            }
+            alert.serialize_entry("body", &self.body)?;
+            if let Some(title_loc_key) = &self.title_loc_key {
+                alert.serialize_entry("title-loc-key", title_loc_key)?;
+            }
+            if let Some(title_loc_args) = &self.title_loc_args {
+                alert.serialize_entry("title-loc-args", title_loc_args)?;
+            }
+            if let Some(subtitle_loc_key) = &self.subtitle_loc_key {
+                alert.serialize_entry("subtitle-loc-key", subtitle_loc_key)?;
+            }
+            if let Some(subtitle_loc_args) = &self.subtitle_loc_args {
+                alert.serialize_entry("subtitle-loc-args", subtitle_loc_args)?;
+            }
+            if let Some(loc_key) = &self.loc_key {
+                alert.serialize_entry("loc-key", loc_key)?;
+            }
+            if let Some(loc_args) = &self.loc_args {
+                alert.serialize_entry("loc-args", loc_args)?;
+            }
+
+            alert.end()
+        }
+    }
 }
 
-#[serde_as]
-#[skip_serializing_none]
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Sound {
     /// The critical alert flag. Set to `1` to enable the critical alert.
-    #[serde(skip_serializing_if = "is_false")]
-    #[serde_as(as = "BoolFromInt")]
     pub critical: bool,
 
     /// The name of a sound file in your app’s main bundle or in the
@@ -216,17 +325,89 @@ impl Default for Sound {
         Self {
             critical: false,
             name: "default".into(),
-            volume: 1f64,
+            volume: 1.,
         }
     }
 }
 
-impl From<Sound> for ApnsSound {
-    fn from(this: Sound) -> Self {
-        if !this.critical {
-            ApnsSound::Name(this.name)
+impl<'de> Deserialize<'de> for Sound {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        struct SoundVisitor;
+
+        impl<'de> Visitor<'de> for SoundVisitor {
+            type Value = Sound;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                write!(formatter, "a sound struct")
+            }
+
+            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                Ok(Sound {
+                    critical: false,
+                    name: v.into(),
+                    volume: 0.,
+                })
+            }
+
+            fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                Ok(Sound {
+                    critical: false,
+                    name: v,
+                    volume: 0.,
+                })
+            }
+
+            fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+            where
+                A: MapAccess<'de>,
+            {
+                let mut sound = Sound::default();
+                while let Some(key) = map.next_key::<&str>()? {
+                    match key {
+                        "critical" => {
+                            let critical: i64 = map.next_value()?;
+                            sound.critical = critical != 0;
+                        }
+                        "name" => sound.name = map.next_value()?,
+                        "volume" => sound.volume = map.next_value()?,
+                        field => {
+                            return Err(de::Error::unknown_field(
+                                field,
+                                &["critical", "name", "volume"],
+                            ));
+                        }
+                    }
+                }
+                Ok(sound)
+            }
+        }
+
+        deserializer.deserialize_any(SoundVisitor)
+    }
+}
+
+impl Serialize for Sound {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        if self.critical {
+            let mut sound = serializer.serialize_struct("Sound", 3)?;
+            sound.serialize_field("critical", &1)?;
+            sound.serialize_field("name", &self.name)?;
+            sound.serialize_field("volume", &self.volume.clamp(0., 1.))?;
+            sound.end()
         } else {
-            ApnsSound::Critical(this)
+            self.name.serialize(serializer)
         }
     }
 }

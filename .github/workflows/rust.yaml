@@ -15,16 +15,18 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  CARGO_NET_GIT_FETCH_WITH_CLI: "true"
+permissions:
+  actions: write # cache
+  checks: write # check result
+  contents: read # git clone
 
 jobs:
-  test:
+  check:
     runs-on: ubuntu-latest
     container: ghcr.io/bitskico/rust-sdk
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Configure sccache
         uses: actions/github-script@v6
@@ -50,3 +52,13 @@ jobs:
         with:
           command: fmt
           args: --all -- --check
+
+  publish:
+    uses: BitskiCo/bitski-internal-sdk/.github/workflows/cloudsmith.yaml@v1
+    needs: [check]
+    with:
+      packages: bitski-apns
+      dry-run: ${{ github.event_name != 'push' }}
+    secrets:
+      cloudsmith-api-key: ${{ secrets.CLOUDSMITH_RUST_KEY }}
+      cloudsmith-service-account-token: ${{ secrets.CLOUDSMITH_SERVICE_ACCOUNT }}
