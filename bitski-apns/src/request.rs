@@ -191,7 +191,7 @@ where
 
         let sound = this.sound.map(|mut sound| {
             sound.critical = is_critical || is_critical_sound;
-            sound.into()
+            sound
         });
 
         let payload = Payload {
