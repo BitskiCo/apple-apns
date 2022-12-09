@@ -2,7 +2,7 @@ use std::fs;
 
 use anyhow::Result;
 use bitski_apns::payload::{Alert, Sound};
-use bitski_apns::{ApnsClientBuilder, ApnsRequest, Authentication, CertificateAuthority};
+use bitski_apns::{Authentication, CertificateAuthority, ClientBuilder, Request};
 use clap::Parser;
 
 mod cli;
@@ -15,7 +15,7 @@ pub async fn main() -> Result<()> {
 
     let cli = Cli::parse();
 
-    let mut builder = ApnsClientBuilder::new();
+    let mut builder = ClientBuilder::new();
 
     if let Some(server) = &cli.server {
         builder.server = server;
@@ -64,18 +64,18 @@ pub async fn main() -> Result<()> {
         sound
     });
 
-    let request = ApnsRequest {
+    let request = Request {
         device_token: cli.device_token,
-        apns_push_type: cli.push_type,
-        apns_id: cli.id,
-        apns_expiration: cli.expiration,
-        apns_priority: cli.priority,
-        apns_topic: cli.topic,
-        apns_collapse_id: cli.collapse_id,
+        push_type: cli.push_type,
+        id: cli.id,
+        expiration: cli.expiration,
+        priority: cli.priority,
+        topic: cli.topic,
+        collapse_id: cli.collapse_id,
         alert: Some(Alert {
             title: cli.title,
             subtitle: cli.subtitle,
-            body: Some(cli.body),
+            body: cli.body,
             launch_image: cli.launch_image,
             ..Default::default()
         }),

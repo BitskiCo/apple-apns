@@ -2,9 +2,9 @@ use std::time::Duration;
 
 use http::{header, HeaderValue};
 use reqwest::tls::Version;
+use reqwest::Url;
 #[cfg(feature = "rustls")]
 use reqwest::{Certificate, Identity};
-use reqwest::{ClientBuilder, Url};
 use reqwest_middleware::ClientWithMiddleware;
 use serde::Serialize;
 use uuid::Uuid;
@@ -12,7 +12,7 @@ use uuid::Uuid;
 use crate::header::APNS_ID;
 use crate::payload::*;
 use crate::reason::Reason;
-use crate::request::ApnsRequest;
+use crate::request::Request;
 use crate::result::{Error, Result};
 #[cfg(feature = "jwt")]
 use crate::token::TokenFactory;
@@ -58,7 +58,7 @@ pub enum CertificateAuthority<'a> {
 }
 
 #[derive(Debug, Clone)]
-pub struct ApnsClientBuilder<'a> {
+pub struct ClientBuilder<'a> {
     pub server: &'a str,
     pub user_agent: &'a str,
 
@@ -71,7 +71,7 @@ pub struct ApnsClientBuilder<'a> {
     pub authentication: Option<Authentication<'a>>,
 }
 
-impl<'a> Default for ApnsClientBuilder<'a> {
+impl<'a> Default for ClientBuilder<'a> {
     fn default() -> Self {
         Self {
             server: PRODUCTION_SERVER,
@@ -86,25 +86,22 @@ impl<'a> Default for ApnsClientBuilder<'a> {
     }
 }
 
-impl<'a> ApnsClientBuilder<'a> {
+impl<'a> ClientBuilder<'a> {
     pub fn new() -> Self {
         Default::default()
     }
 
-    pub fn build(&self) -> Result<ApnsClient> {
+    pub fn build(&self) -> Result<Client> {
         let client = self.reqwest_client_builder()?.build()?;
         self.with_reqwest_client(client)
     }
 
-    pub fn with_reqwest_client(&self, client: reqwest::Client) -> Result<ApnsClient> {
+    pub fn with_reqwest_client(&self, client: reqwest::Client) -> Result<Client> {
         let client = reqwest_middleware::ClientBuilder::new(client).build();
         self.with_reqwest_middleware_client(client)
     }
 
-    pub fn with_reqwest_middleware_client(
-        &self,
-        client: ClientWithMiddleware,
-    ) -> Result<ApnsClient> {
+    pub fn with_reqwest_middleware_client(&self, client: ClientWithMiddleware) -> Result<Client> {
         let base_url = format!("{}/3/device/", self.server).parse()?;
 
         #[cfg(feature = "jwt")]
@@ -119,7 +116,7 @@ impl<'a> ApnsClientBuilder<'a> {
             None
         };
 
-        Ok(ApnsClient {
+        Ok(Client {
             base_url,
             client,
             #[cfg(feature = "jwt")]
@@ -127,7 +124,7 @@ impl<'a> ApnsClientBuilder<'a> {
         })
     }
 
-    pub fn reqwest_client_builder(&self) -> Result<ClientBuilder> {
+    pub fn reqwest_client_builder(&self) -> Result<reqwest::ClientBuilder> {
         #[allow(unused_mut)]
         let mut builder = reqwest::Client::builder()
             .user_agent(self.user_agent)
@@ -163,7 +160,7 @@ impl<'a> ApnsClientBuilder<'a> {
     }
 }
 
-pub struct ApnsClient {
+pub struct Client {
     base_url: Url,
     client: ClientWithMiddleware,
 
@@ -171,19 +168,19 @@ pub struct ApnsClient {
     token_factory: Option<TokenFactory>,
 }
 
-impl ApnsClient {
-    pub fn builder<'a>() -> ApnsClientBuilder<'a> {
-        ApnsClientBuilder::new()
+impl Client {
+    pub fn builder<'a>() -> ClientBuilder<'a> {
+        ClientBuilder::new()
     }
 
     /// Creates a push notification and returns the APNS ID.
-    pub async fn post<T>(&self, request: ApnsRequest<T>) -> Result<Uuid>
+    pub async fn post<T>(&self, request: Request<T>) -> Result<Uuid>
     where
         T: Serialize,
     {
         let url = self.base_url.join(&request.device_token)?;
-        let payload_size_limit = request.apns_push_type.payload_size_limit();
-        let (mut headers, payload): (_, ApnsPayload<T>) = request.try_into()?;
+        let payload_size_limit = request.push_type.payload_size_limit();
+        let (mut headers, payload): (_, Payload<T>) = request.try_into()?;
         headers.insert(
             header::CONTENT_TYPE,
             HeaderValue::from_static("application/json"),

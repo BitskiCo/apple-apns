@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use anyhow::{anyhow, Result};
-use bitski_apns::{ApnsPriority, ApnsPushType, InterruptionLevel};
+use bitski_apns::{InterruptionLevel, Priority, PushType};
 use clap::{ArgGroup, Parser};
 use humantime::parse_duration;
 use time::{format_description::well_known::Iso8601, OffsetDateTime};
@@ -53,8 +53,8 @@ pub struct Cli {
     pub device_token: String,
 
     /// The push type of the notification to send.
-    #[arg(long, env, default_value_t = ApnsPushType::Alert)]
-    pub push_type: ApnsPushType,
+    #[arg(long, env, default_value_t = PushType::Alert)]
+    pub push_type: PushType,
 
     /// A canonical UUID that is the unique ID for the notification.
     #[arg(long, env)]
@@ -66,7 +66,7 @@ pub struct Cli {
 
     /// The priority of the notification.
     #[arg(long, env, default_value_t = Default::default())]
-    pub priority: ApnsPriority,
+    pub priority: Priority,
 
     /// The topic for the notification, e.g. bundle ID or app ID.
     #[arg(long, env)]

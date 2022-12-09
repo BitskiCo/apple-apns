@@ -8,7 +8,7 @@ use crate::payload::*;
 use crate::result::{Error, Result};
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct ApnsRequest<T = ()> {
+pub struct Request<T = ()> {
     /// The hex-encoded device token.
     pub device_token: String,
 
@@ -17,7 +17,7 @@ pub struct ApnsRequest<T = ()> {
     /// your notification’s payload. If there’s a mismatch, or if the header is
     /// missing on required systems, APNs may return an error, delay the
     /// delivery of the notification, or drop it altogether.
-    pub apns_push_type: ApnsPushType,
+    pub push_type: PushType,
 
     /// A canonical UUID that is the unique ID for the notification. If an error
     /// occurs when sending the notification, APNs includes this value when
@@ -26,7 +26,7 @@ pub struct ApnsRequest<T = ()> {
     /// form 8-4-4-4-12. For example: 123e4567-e89b-12d3-a456-4266554400a0. If
     /// you omit this header, APNs creates a UUID for you and returns it in its
     /// response.
-    pub apns_id: Option<Uuid>,
+    pub id: Option<Uuid>,
 
     /// The date at which the notification is no longer valid. This value is a
     /// UNIX epoch expressed in seconds (UTC). If the value is nonzero, APNs
@@ -42,7 +42,7 @@ pub struct ApnsRequest<T = ()> {
     /// honor the expiry date without any guarantee. If the value is nonzero,
     /// the notification may be delivered after the mentioned date. If the value
     /// is 0, the notification may be delivered with some delay.
-    pub apns_expiration: Option<OffsetDateTime>,
+    pub expiration: Option<OffsetDateTime>,
 
     /// The priority of the notification. If you omit this header, APNs sets the
     /// notification priority to 10.
@@ -54,7 +54,7 @@ pub struct ApnsRequest<T = ()> {
     ///
     /// Specify 1 to prioritize the device’s power considerations over all other
     /// factors for delivery, and prevent awakening the device.
-    pub apns_priority: ApnsPriority,
+    pub priority: Priority,
 
     /// The topic for the notification. In general, the topic is your app’s
     /// bundle ID/app ID. It can have a suffix based on the type of push
@@ -65,14 +65,14 @@ pub struct ApnsRequest<T = ()> {
     /// with the correct bundle ID and suffix combination. To learn more about
     /// app ID, see [Register an App
     /// ID](https://help.apple.com/developer-account/#/dev1b35d6f83).
-    pub apns_topic: Option<String>,
+    pub topic: Option<String>,
 
     /// An identifier you use to coalesce multiple notifications into a single
     /// notification for the user. Typically, each notification request causes a
     /// new notification to be displayed on the user’s device. When sending the
     /// same notification more than once, use the same value in this header to
     /// coalesce the requests. The value of this key must not exceed 64 bytes.
-    pub apns_collapse_id: Option<String>,
+    pub collapse_id: Option<String>,
 
     /// The information for displaying an alert.
     pub alert: Option<Alert>,
@@ -138,39 +138,39 @@ pub struct ApnsRequest<T = ()> {
     pub user_info: Option<T>,
 }
 
-impl<T> TryFrom<ApnsRequest<T>> for (HeaderMap<HeaderValue>, ApnsPayload<T>)
+impl<T> TryFrom<Request<T>> for (HeaderMap<HeaderValue>, Payload<T>)
 where
     T: Serialize,
 {
     type Error = Error;
 
-    fn try_from(this: ApnsRequest<T>) -> Result<Self> {
+    fn try_from(this: Request<T>) -> Result<Self> {
         let mut headers = HeaderMap::new();
 
-        let _ = headers.insert(APNS_PUSH_TYPE.clone(), this.apns_push_type.into());
+        let _ = headers.insert(APNS_PUSH_TYPE.clone(), this.push_type.into());
 
-        if let Some(apns_id) = this.apns_id {
-            let apns_id = apns_id.hyphenated().to_string().parse()?;
-            let _ = headers.insert(APNS_ID.clone(), apns_id);
+        if let Some(id) = this.id {
+            let id = id.hyphenated().to_string().parse()?;
+            let _ = headers.insert(APNS_ID.clone(), id);
         }
 
-        if let Some(apns_expiration) = this.apns_expiration {
-            let apns_expiration = apns_expiration.unix_timestamp().to_string().parse()?;
-            let _ = headers.insert(APNS_EXPIRATION.clone(), apns_expiration);
+        if let Some(expiration) = this.expiration {
+            let expiration = expiration.unix_timestamp().to_string().parse()?;
+            let _ = headers.insert(APNS_EXPIRATION.clone(), expiration);
         }
 
-        if this.apns_priority != ApnsPriority::default() {
-            let _ = headers.insert(APNS_PRIORITY.clone(), this.apns_priority.into());
+        if this.priority != Priority::default() {
+            let _ = headers.insert(APNS_PRIORITY.clone(), this.priority.into());
         }
 
-        if let Some(apns_topic) = this.apns_topic {
-            let apns_topic = apns_topic.parse()?;
-            let _ = headers.insert(APNS_TOPIC.clone(), apns_topic);
+        if let Some(topic) = this.topic {
+            let topic = topic.parse()?;
+            let _ = headers.insert(APNS_TOPIC.clone(), topic);
         }
 
-        if let Some(apns_collapse_id) = this.apns_collapse_id {
-            let apns_collapse_id = apns_collapse_id.parse()?;
-            let _ = headers.insert(APNS_COLLAPSE_ID.clone(), apns_collapse_id);
+        if let Some(collapse_id) = this.collapse_id {
+            let collapse_id = collapse_id.parse()?;
+            let _ = headers.insert(APNS_COLLAPSE_ID.clone(), collapse_id);
         }
 
         let is_critical = this
@@ -191,10 +191,10 @@ where
 
         let sound = this.sound.map(|mut sound| {
             sound.critical = is_critical || is_critical_sound;
-            sound.into()
+            sound
         });
 
-        let payload = ApnsPayload {
+        let payload = Payload {
             alert: this.alert.map(Into::into),
             badge: this.badge,
             sound,
