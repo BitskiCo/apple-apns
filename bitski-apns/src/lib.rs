@@ -13,7 +13,7 @@ pub mod token;
 
 pub use client::*;
 pub use header::{Priority, PushType};
-pub use payload::InterruptionLevel;
+pub use payload::{Alert, InterruptionLevel};
 pub use reason::*;
 pub use request::*;
 pub use result::*;
