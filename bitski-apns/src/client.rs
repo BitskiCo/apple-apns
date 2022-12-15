@@ -32,10 +32,7 @@ pub enum Authentication<'a> {
     /// APNs](https://developer.apple.com/documentation/usernotifications/setting_up_a_remote_notification_server/establishing_a_certificate-based_connection_to_apns).
     #[cfg(feature = "rustls")]
     #[cfg_attr(docsrs, doc(cfg(feature = "rustls")))]
-    Certificate {
-        ca_pem: Option<&'a [u8]>,
-        client_pem: &'a [u8],
-    },
+    Certificate { client_pem: &'a [u8] },
 
     /// (Required for token-based authentication) The value of this header is
     /// bearer <provider_token>, where <provider_token> is the encrypted token
@@ -52,10 +49,22 @@ pub enum Authentication<'a> {
     },
 }
 
+#[cfg(feature = "rustls")]
+#[cfg_attr(docsrs, doc(cfg(feature = "rustls")))]
+#[derive(Debug, Clone)]
+pub enum CertificateAuthority<'a> {
+    Pem(&'a [u8]),
+    Der(&'a [u8]),
+}
+
 #[derive(Debug, Clone)]
 pub struct ClientBuilder<'a> {
     pub server: &'a str,
     pub user_agent: &'a str,
+
+    #[cfg(feature = "rustls")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "rustls")))]
+    pub ca: Option<CertificateAuthority<'a>>,
 
     #[cfg(any(feature = "rustls", feature = "jwt"))]
     #[cfg_attr(docsrs, doc(cfg(any(feature = "rustls", feature = "jwt"))))]
@@ -67,6 +76,9 @@ impl<'a> Default for ClientBuilder<'a> {
         Self {
             server: PRODUCTION_SERVER,
             user_agent: USER_AGENT,
+
+            #[cfg(feature = "rustls")]
+            ca: None,
 
             #[cfg(any(feature = "rustls", feature = "jwt"))]
             authentication: None,
@@ -128,12 +140,17 @@ impl<'a> ClientBuilder<'a> {
             // Force rustls
             builder = builder.use_rustls_tls();
 
+            // Add root certificate
+            if let Some(ca) = &self.ca {
+                let cert = match ca {
+                    CertificateAuthority::Pem(pem) => Certificate::from_pem(pem)?,
+                    CertificateAuthority::Der(der) => Certificate::from_der(der)?,
+                };
+                builder = builder.add_root_certificate(cert);
+            }
+
             // Configure certificate authentication
-            if let Some(Authentication::Certificate { ca_pem, client_pem }) = self.authentication {
-                if let Some(ca_pem) = ca_pem {
-                    let ca = Certificate::from_pem(ca_pem)?;
-                    builder = builder.add_root_certificate(ca);
-                }
+            if let Some(Authentication::Certificate { client_pem }) = self.authentication {
                 let identity = Identity::from_pem(client_pem)?;
                 builder = builder.identity(identity);
             }
