@@ -2,7 +2,7 @@ use std::fs;
 
 use anyhow::Result;
 use bitski_apns::payload::{Alert, Sound};
-use bitski_apns::{Authentication, ClientBuilder, Request};
+use bitski_apns::{Authentication, CertificateAuthority, ClientBuilder, Request};
 use clap::Parser;
 
 mod cli;
@@ -26,15 +26,16 @@ pub async fn main() -> Result<()> {
     }
 
     let mut ca_pem = None;
+    if let Some(ca_pem_file) = &cli.ca_pem_file {
+        ca_pem = Some(fs::read(ca_pem_file)?);
+        builder.ca = Some(CertificateAuthority::Pem(ca_pem.as_ref().unwrap()))
+    }
+
     let mut client_pem = None;
     let mut key_pem = None;
     if let Some(client_pem_file) = &cli.client_pem_file {
-        if let Some(ca_pem_file) = cli.ca_pem_file.as_ref() {
-            ca_pem = Some(fs::read(ca_pem_file)?);
-        }
         client_pem = Some(fs::read(client_pem_file)?);
         builder.authentication = Some(Authentication::Certificate {
-            ca_pem: ca_pem.as_deref(),
             client_pem: client_pem.as_ref().unwrap(),
         })
     } else if let (Some(key_id), Some(key_pem_file), Some(team_id)) =
