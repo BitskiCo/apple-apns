@@ -1,0 +1,39 @@
+name: Docker
+
+on:
+  pull_request:
+    paths:
+      - .dockerignore
+      - .github/workflows/docker.yaml
+      - "**.rs"
+      - "**.toml"
+      - Dockerfile
+  workflow_run:
+    types: [completed]
+    workflows: ["Rust"]
+    branches: [main]
+  workflow_dispatch:
+  push:
+    tags: [next]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  actions: write # cache
+  contents: read # git clone
+  packages: write # publish Docker image
+
+jobs:
+  build-push:
+    if: >
+      github.event_name != 'workflow_run' ||
+      github.event.workflow_run.conclusion == 'success'
+    uses: BitskiCo/bitski-internal-sdk/.github/workflows/docker.yaml@v1
+    with:
+      push: true
+      sccache: true
+    secrets:
+      build_args: |
+        CLOUDSMITH_API_KEY=${{ secrets.CLOUDSMITH_RUST_KEY }}
