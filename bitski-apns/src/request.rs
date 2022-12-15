@@ -195,16 +195,18 @@ where
         });
 
         let payload = Payload {
-            alert: this.alert.map(Into::into),
-            badge: this.badge,
-            sound,
-            thread_id: this.thread_id,
-            category: this.category,
-            content_available: this.content_available,
-            mutable_content: this.mutable_content,
-            target_content_id: this.target_content_id,
-            interruption_level: this.interruption_level,
-            relevance_score: this.relevance_score,
+            aps: Aps {
+                alert: this.alert.map(Into::into),
+                badge: this.badge,
+                sound,
+                thread_id: this.thread_id,
+                category: this.category,
+                content_available: this.content_available,
+                mutable_content: this.mutable_content,
+                target_content_id: this.target_content_id,
+                interruption_level: this.interruption_level,
+                relevance_score: this.relevance_score,
+            },
             user_info: this.user_info,
         };
 

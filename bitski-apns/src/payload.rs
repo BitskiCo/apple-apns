@@ -22,6 +22,20 @@ pub struct Payload<T = ()>
 where
     T: Serialize,
 {
+    /// Apple-defined keys.
+    pub aps: Aps,
+
+    /// Additional data to send.
+    #[serde(flatten)]
+    pub user_info: Option<T>,
+}
+
+/// Apple-defined keys.
+#[serde_as]
+#[skip_serializing_none]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct Aps {
     /// The information for displaying an alert.
     pub alert: Option<Alert>,
 
@@ -85,10 +99,6 @@ where
     /// in the notification summary. See
     /// [`relevanceScore`](https://developer.apple.com/documentation/usernotifications/unnotificationcontent/3821031-relevancescore).
     pub relevance_score: Option<f64>,
-
-    /// Additional data to send.
-    #[serde(flatten)]
-    pub user_info: Option<T>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -494,6 +504,102 @@ mod test {
         assert_eq!(
             serde_json::from_str::<Payload>(
                 &json!({
+                    "aps": {
+                        "alert": "Hello World!",
+                        "badge": 11,
+                        "sound": "default",
+                        "thread-id": "my-thread-id",
+                        "category": "my-category",
+                        "content-available": 1,
+                        "mutable-content": 1,
+                        "target-content-id": "my-target-id",
+                        "interruption-level": "active",
+                        "relevance-score": 0.5,
+                    },
+                })
+                .to_string()
+            )
+            .unwrap(),
+            Payload {
+                aps: Aps {
+                    alert: Some(Alert {
+                        body: "Hello World!".into(),
+                        ..Default::default()
+                    }),
+                    badge: Some(11),
+                    sound: Some(Sound {
+                        critical: false,
+                        name: "default".into(),
+                        volume: 0.
+                    }),
+                    thread_id: Some("my-thread-id".into()),
+                    category: Some("my-category".into()),
+                    content_available: true,
+                    mutable_content: true,
+                    target_content_id: Some("my-target-id".into()),
+                    interruption_level: Some(InterruptionLevel::Active),
+                    relevance_score: Some(0.5),
+                },
+                user_info: Some(())
+            }
+        );
+        assert_eq!(
+            serde_json::from_str::<Payload<TestUserInfo>>(
+                &json!({
+                    "aps": {
+                        "alert": "Hello World!",
+                    },
+                    "foo": true,
+                    "bar": -10,
+                })
+                .to_string()
+            )
+            .unwrap(),
+            Payload::<TestUserInfo> {
+                aps: Aps {
+                    alert: Some(Alert {
+                        body: "Hello World!".into(),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                user_info: Some(TestUserInfo {
+                    foo: true,
+                    bar: -10
+                }),
+            }
+        );
+    }
+
+    #[test]
+    fn payload_ser() {
+        assert_eq!(
+            serde_json::to_value(&Payload {
+                aps: Aps {
+                    alert: Some(Alert {
+                        body: "Hello World!".into(),
+                        ..Default::default()
+                    }),
+                    badge: Some(11),
+                    sound: Some(Sound {
+                        critical: false,
+                        name: "default".into(),
+                        volume: 0.
+                    }),
+                    thread_id: Some("my-thread-id".into()),
+                    category: Some("my-category".into()),
+                    content_available: true,
+                    mutable_content: true,
+                    target_content_id: Some("my-target-id".into()),
+                    interruption_level: Some(InterruptionLevel::Active),
+                    relevance_score: Some(0.5),
+                    ..Default::default()
+                },
+                user_info: Some(()),
+            })
+            .unwrap(),
+            json!({
+                "aps": {
                     "alert": "Hello World!",
                     "badge": 11,
                     "sound": "default",
@@ -504,107 +610,28 @@ mod test {
                     "target-content-id": "my-target-id",
                     "interruption-level": "active",
                     "relevance-score": 0.5,
-                })
-                .to_string()
-            )
-            .unwrap(),
-            Payload {
-                alert: Some(Alert {
-                    body: "Hello World!".into(),
-                    ..Default::default()
-                }),
-                badge: Some(11),
-                sound: Some(Sound {
-                    critical: false,
-                    name: "default".into(),
-                    volume: 0.
-                }),
-                thread_id: Some("my-thread-id".into()),
-                category: Some("my-category".into()),
-                content_available: true,
-                mutable_content: true,
-                target_content_id: Some("my-target-id".into()),
-                interruption_level: Some(InterruptionLevel::Active),
-                relevance_score: Some(0.5),
-                user_info: Some(())
-            }
-        );
-        assert_eq!(
-            serde_json::from_str::<Payload<TestUserInfo>>(
-                &json!({
-                    "alert": "Hello World!",
-                    "foo": true,
-                    "bar": -10,
-                })
-                .to_string()
-            )
-            .unwrap(),
-            Payload::<TestUserInfo> {
-                alert: Some(Alert {
-                    body: "Hello World!".into(),
-                    ..Default::default()
-                }),
-                user_info: Some(TestUserInfo {
-                    foo: true,
-                    bar: -10
-                }),
-                ..Default::default()
-            }
-        );
-    }
-
-    #[test]
-    fn payload_ser() {
-        assert_eq!(
-            serde_json::to_value(&Payload {
-                alert: Some(Alert {
-                    body: "Hello World!".into(),
-                    ..Default::default()
-                }),
-                badge: Some(11),
-                sound: Some(Sound {
-                    critical: false,
-                    name: "default".into(),
-                    volume: 0.
-                }),
-                thread_id: Some("my-thread-id".into()),
-                category: Some("my-category".into()),
-                content_available: true,
-                mutable_content: true,
-                target_content_id: Some("my-target-id".into()),
-                interruption_level: Some(InterruptionLevel::Active),
-                relevance_score: Some(0.5),
-                user_info: Some(())
-            })
-            .unwrap(),
-            json!({
-                "alert": "Hello World!",
-                "badge": 11,
-                "sound": "default",
-                "thread-id": "my-thread-id",
-                "category": "my-category",
-                "content-available": 1,
-                "mutable-content": 1,
-                "target-content-id": "my-target-id",
-                "interruption-level": "active",
-                "relevance-score": 0.5,
+                },
             })
         );
         assert_eq!(
             serde_json::to_value(&Payload::<TestUserInfo> {
-                alert: Some(Alert {
-                    body: "Hello World!".into(),
+                aps: Aps {
+                    alert: Some(Alert {
+                        body: "Hello World!".into(),
+                        ..Default::default()
+                    }),
                     ..Default::default()
-                }),
+                },
                 user_info: Some(TestUserInfo {
                     foo: true,
                     bar: -10
                 }),
-                ..Default::default()
             })
             .unwrap(),
             json!({
-                "alert": "Hello World!",
+                "aps": {
+                    "alert": "Hello World!",
+                },
                 "foo": true,
                 "bar": -10,
             })

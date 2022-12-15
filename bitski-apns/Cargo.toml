@@ -1,6 +1,6 @@
 [package]
 name = "bitski-apns"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 publish = ["bitski-rust"]
 
@@ -8,10 +8,10 @@ publish = ["bitski-rust"]
 
 [dependencies]
 http = "0.2.8"
-jsonwebtoken = { version = "8.1.1", optional = true }
+jsonwebtoken = { version = "8.2.0", optional = true }
 reqwest = { version = "0.11.13", features = ["serde_json"] }
 reqwest-middleware = "0.2.0"
-serde = { version = "1.0.148", features = ["derive"] }
+serde = { version = "1.0.150", features = ["derive"] }
 serde_json = "1.0.89"
 serde_plain = "1.0.1"
 serde_repr = "0.1.9"
