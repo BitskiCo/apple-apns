@@ -1,6 +1,6 @@
 [package]
 name = "bitski-apns"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2021"
 publish = ["bitski-rust"]
 
@@ -24,6 +24,7 @@ uuid = { version = "1.2.2", features = ["serde"] }
 [features]
 default = ["jwt", "rustls"]
 
+http1 = []
 jwt = ["jsonwebtoken"]
 rustls = ["reqwest/rustls-tls"]
 
