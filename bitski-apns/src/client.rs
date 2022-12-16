@@ -17,8 +17,8 @@ use crate::result::{Error, Result};
 #[cfg(feature = "jwt")]
 use crate::token::TokenFactory;
 
-pub const DEVELOPMENT_SERVER: &str = "https://api.sandbox.push.apple.com";
-pub const PRODUCTION_SERVER: &str = "https://api.push.apple.com";
+pub const DEVELOPMENT_SERVER: &str = "https://api.sandbox.push.apple.com.";
+pub const PRODUCTION_SERVER: &str = "https://api.push.apple.com.";
 
 pub const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
 
