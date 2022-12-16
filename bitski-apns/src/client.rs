@@ -129,11 +129,15 @@ impl<'a> ClientBuilder<'a> {
         let mut builder = reqwest::Client::builder()
             .user_agent(self.user_agent)
             .pool_idle_timeout(None)
-            .http2_prior_knowledge()
             .http2_keep_alive_interval(Some(Duration::from_secs(60 * 60)))
             .http2_keep_alive_timeout(Duration::from_secs(60))
             .http2_keep_alive_while_idle(true)
             .min_tls_version(Version::TLS_1_2);
+
+        #[cfg(not(feature = "http1"))]
+        {
+            builder = builder.http2_prior_knowledge();
+        }
 
         #[cfg(feature = "rustls")]
         {
