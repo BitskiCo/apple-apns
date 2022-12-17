@@ -7,7 +7,7 @@ use crate::header::*;
 use crate::payload::*;
 use crate::result::{Error, Result};
 
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Request<T = ()> {
     /// The hex-encoded device token.
     pub device_token: String,
