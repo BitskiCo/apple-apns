@@ -16,7 +16,7 @@ fn is_false(v: &bool) -> bool {
 /// notification, the maximum size is 5 KB (5120 bytes).
 #[serde_as]
 #[skip_serializing_none]
-#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct Payload<T = ()>
 where
@@ -33,7 +33,7 @@ where
 /// Apple-defined keys.
 #[serde_as]
 #[skip_serializing_none]
-#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct Aps {
     /// The information for displaying an alert.
@@ -593,7 +593,6 @@ mod test {
                     target_content_id: Some("my-target-id".into()),
                     interruption_level: Some(InterruptionLevel::Active),
                     relevance_score: Some(0.5),
-                    ..Default::default()
                 },
                 user_info: Some(()),
             })

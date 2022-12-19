@@ -3,17 +3,20 @@ name: Rust
 on:
   pull_request:
     paths:
-      - "**.proto"
+      - .github/workflows/rust.yaml
       - "**.rs"
       - "**.sql"
       - "**.toml"
       - Cargo.lock
+      - docker-compose.yaml
+      - Dockerfile
   push:
     branches: [main]
+    tags: ["*.*.*"]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name != 'push' }}
 
 permissions:
   actions: write # cache
@@ -39,13 +42,16 @@ jobs:
         run: rustup show
 
       - name: Run cargo test
-        run: cargo test --all-features
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --all-features --workspace
 
       - name: Run cargo clippy
         uses: actions-rs/clippy-check@v1
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          args: --all-features -- --deny warnings
+          token: ${{ github.token }}
+          args: --all-features --workspace -- --deny warnings
 
       - name: Run cargo fmt
         uses: actions-rs/cargo@v1
