@@ -118,7 +118,7 @@ impl<'a> ClientBuilder<'a> {
         };
 
         Ok(Client {
-            inner: Arc::new(InnerClient {
+            inner: Arc::new(ClientRef {
                 base_url,
                 client,
                 #[cfg(feature = "jwt")]
@@ -167,7 +167,7 @@ impl<'a> ClientBuilder<'a> {
     }
 }
 
-pub struct InnerClient {
+struct ClientRef {
     base_url: Url,
     client: ClientWithMiddleware,
 
@@ -177,7 +177,7 @@ pub struct InnerClient {
 
 #[derive(Clone)]
 pub struct Client {
-    inner: Arc<InnerClient>,
+    inner: Arc<ClientRef>,
 }
 
 impl Client {
