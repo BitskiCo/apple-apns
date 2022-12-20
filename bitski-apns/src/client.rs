@@ -164,6 +164,7 @@ impl<'a> ClientBuilder<'a> {
     }
 }
 
+#[derive(Clone)]
 pub struct Client {
     base_url: Url,
     client: ClientWithMiddleware,

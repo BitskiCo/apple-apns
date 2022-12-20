@@ -28,11 +28,12 @@ impl Default for Cache {
     }
 }
 
+#[derive(Clone)]
 pub struct TokenFactory {
     key: EncodingKey,
     header: Header,
     iss: String,
-    cache: RwLock<Cache>,
+    cache: Arc<RwLock<Cache>>,
 }
 
 impl TokenFactory {
@@ -53,6 +54,7 @@ impl TokenFactory {
             cache: Default::default(),
         };
 
+        // this is wrong
         *factory.cache.write().unwrap() = factory.create()?;
 
         Ok(factory)
@@ -65,6 +67,7 @@ impl TokenFactory {
         } else {
             let cache = self.create()?;
             let jwt = cache.jwt.clone();
+            // this is wrong
             *self.cache.write().unwrap() = cache;
             Ok(jwt)
         }
