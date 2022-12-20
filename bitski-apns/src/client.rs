@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use std::time::Duration;
 
 use http::{header, HeaderValue};
@@ -117,10 +118,12 @@ impl<'a> ClientBuilder<'a> {
         };
 
         Ok(Client {
-            base_url,
-            client,
-            #[cfg(feature = "jwt")]
-            token_factory,
+            inner: Arc::new(ClientRef {
+                base_url,
+                client,
+                #[cfg(feature = "jwt")]
+                token_factory,
+            }),
         })
     }
 
@@ -164,12 +167,17 @@ impl<'a> ClientBuilder<'a> {
     }
 }
 
-pub struct Client {
+struct ClientRef {
     base_url: Url,
     client: ClientWithMiddleware,
 
     #[cfg(feature = "jwt")]
     token_factory: Option<TokenFactory>,
+}
+
+#[derive(Clone)]
+pub struct Client {
+    inner: Arc<ClientRef>,
 }
 
 impl Client {
@@ -182,7 +190,7 @@ impl Client {
     where
         T: Serialize,
     {
-        let url = self.base_url.join(&request.device_token)?;
+        let url = self.inner.base_url.join(&request.device_token)?;
         let payload_size_limit = request.push_type.payload_size_limit();
         let (mut headers, payload): (_, Payload<T>) = request.try_into()?;
         headers.insert(
@@ -199,10 +207,10 @@ impl Client {
         }
 
         #[allow(unused_mut)]
-        let mut req = self.client.post(url).headers(headers).body(body);
+        let mut req = self.inner.client.post(url).headers(headers).body(body);
 
         #[cfg(feature = "jwt")]
-        if let Some(token_factory) = &self.token_factory {
+        if let Some(token_factory) = &self.inner.token_factory {
             let jwt = token_factory.get()?;
             req = req.bearer_auth(jwt);
         }
