@@ -2,6 +2,7 @@ use crate::reason::Reason;
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
+/// Apple Push Notification service errors.
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error(transparent)]

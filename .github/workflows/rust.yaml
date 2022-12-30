@@ -58,13 +58,3 @@ jobs:
         with:
           command: fmt
           args: --all -- --check
-
-  publish:
-    uses: BitskiCo/bitski-internal-sdk/.github/workflows/cloudsmith.yaml@v1
-    needs: [check]
-    with:
-      packages: bitski-apns
-      dry-run: ${{ github.event_name != 'push' }}
-    secrets:
-      cloudsmith-api-key: ${{ secrets.CLOUDSMITH_RUST_KEY }}
-      cloudsmith-service-account-token: ${{ secrets.CLOUDSMITH_SERVICE_ACCOUNT }}

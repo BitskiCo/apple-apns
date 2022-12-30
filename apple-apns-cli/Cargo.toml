@@ -1,19 +1,24 @@
 [package]
-name = "bitski-apns-cli"
-version = "0.3.0"
+name = "apple-apns-cli"
+version = "0.5.0"
 edition = "2021"
-publish = ["bitski-rust"]
+description = "CLI for Apple Push Notification service"
+documentation = "https://docs.rs/apple-apns"
+license = "MIT"
+homepage = "https://github.com/BitskiCo/apple-apns"
+repository = "https://github.com/BitskiCo/apple-apns"
+keywords = ["apple", "apn", "apns", "aps", "ios", "notification", "push"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [[bin]]
-name = "bitski-apns"
+name = "apns"
 path = "src/main.rs"
 doc = false
 
 [dependencies]
 anyhow = "1.0.66"
-bitski-apns = { version = "0.4.0", path = "../bitski-apns", registry = "bitski-rust" }
+apple-apns = { version = "0.5.0", path = "../apple-apns" }
 clap = { version = "4.0.29", features = ["derive", "env"] }
 dotenvy = "0.15.6"
 humantime = "2.1.0"
@@ -21,4 +26,5 @@ serde = "1.0.151"
 serde_json = "1.0.89"
 time = { version = "0.3.17", features = ["parsing"] }
 tokio = { version = "1.23.0", features = ["macros", "rt-multi-thread"] }
+url = "2.3.1"
 uuid = "1.2.2"

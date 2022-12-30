@@ -1,15 +1,14 @@
-use std::sync::Arc;
 use std::time::Duration;
 
-use http::{header, HeaderValue};
 use reqwest::tls::Version;
-use reqwest::Url;
 #[cfg(feature = "rustls")]
 use reqwest::{Certificate, Identity};
 use reqwest_middleware::ClientWithMiddleware;
 use serde::Serialize;
+use url::Url;
 use uuid::Uuid;
 
+use crate::endpoint::Endpoint;
 use crate::header::APNS_ID;
 use crate::payload::*;
 use crate::reason::Reason;
@@ -18,11 +17,10 @@ use crate::result::{Error, Result};
 #[cfg(feature = "jwt")]
 use crate::token::TokenFactory;
 
-pub const DEVELOPMENT_SERVER: &str = "https://api.sandbox.push.apple.com.";
-pub const PRODUCTION_SERVER: &str = "https://api.push.apple.com.";
-
+/// Default user agent.
 pub const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
 
+/// Authentication options.
 #[cfg(any(feature = "rustls", feature = "jwt"))]
 #[cfg_attr(docsrs, doc(cfg(any(feature = "rustls", feature = "jwt"))))]
 #[derive(Debug, Clone)]
@@ -50,6 +48,7 @@ pub enum Authentication<'a> {
     },
 }
 
+/// Certificate authority options.
 #[cfg(feature = "rustls")]
 #[cfg_attr(docsrs, doc(cfg(feature = "rustls")))]
 #[derive(Debug, Clone)]
@@ -58,9 +57,10 @@ pub enum CertificateAuthority<'a> {
     Der(&'a [u8]),
 }
 
+/// [`Client`] builder.
 #[derive(Debug, Clone)]
 pub struct ClientBuilder<'a> {
-    pub server: &'a str,
+    pub endpoint: Endpoint,
     pub user_agent: &'a str,
 
     #[cfg(feature = "rustls")]
@@ -75,7 +75,7 @@ pub struct ClientBuilder<'a> {
 impl<'a> Default for ClientBuilder<'a> {
     fn default() -> Self {
         Self {
-            server: PRODUCTION_SERVER,
+            endpoint: Endpoint::default(),
             user_agent: USER_AGENT,
 
             #[cfg(feature = "rustls")]
@@ -88,22 +88,29 @@ impl<'a> Default for ClientBuilder<'a> {
 }
 
 impl<'a> ClientBuilder<'a> {
+    /// Creates a new [`ClientBuilder`].
     pub fn new() -> Self {
         Default::default()
     }
 
+    /// Builds a `Client`.
     pub fn build(&self) -> Result<Client> {
-        let client = self.reqwest_client_builder()?.build()?;
-        self.with_reqwest_client(client)
-    }
-
-    pub fn with_reqwest_client(&self, client: reqwest::Client) -> Result<Client> {
-        let client = reqwest_middleware::ClientBuilder::new(client).build();
+        let client = self.reqwest_client_builder()?.build();
         self.with_reqwest_middleware_client(client)
     }
 
-    pub fn with_reqwest_middleware_client(&self, client: ClientWithMiddleware) -> Result<Client> {
-        let base_url = format!("{}/3/device/", self.server).parse()?;
+    /// Builds a `Client` with middleware.
+    pub fn build_with_middleware<F>(&self, f: F) -> Result<Client>
+    where
+        F: FnOnce(&mut reqwest_middleware::ClientBuilder) -> Result<()>,
+    {
+        let mut builder = self.reqwest_client_builder()?;
+        f(&mut builder)?;
+        self.with_reqwest_middleware_client(builder.build())
+    }
+
+    fn with_reqwest_middleware_client(&self, client: ClientWithMiddleware) -> Result<Client> {
+        let base_url = self.endpoint.as_url().clone();
 
         #[cfg(feature = "jwt")]
         let token_factory = if let Some(Authentication::Token {
@@ -118,16 +125,14 @@ impl<'a> ClientBuilder<'a> {
         };
 
         Ok(Client {
-            inner: Arc::new(ClientRef {
-                base_url,
-                client,
-                #[cfg(feature = "jwt")]
-                token_factory,
-            }),
+            base_url,
+            client,
+            #[cfg(feature = "jwt")]
+            token_factory,
         })
     }
 
-    pub fn reqwest_client_builder(&self) -> Result<reqwest::ClientBuilder> {
+    fn reqwest_client_builder(&self) -> Result<reqwest_middleware::ClientBuilder> {
         #[allow(unused_mut)]
         let mut builder = reqwest::Client::builder()
             .user_agent(self.user_agent)
@@ -163,11 +168,19 @@ impl<'a> ClientBuilder<'a> {
             }
         }
 
+        let client = builder.build()?;
+        let builder = reqwest_middleware::ClientBuilder::new(client);
         Ok(builder)
     }
 }
 
-struct ClientRef {
+/// Apple Push Notification service client.
+///
+/// The [`Client`] is safe to use from multiple threads. However, [`Client`]
+/// uses a [`std::sync::RwLock`] and is not [`Clone`]. To pass [`Client`] to
+/// multiple threads, use [`std::sync::Arc`] for OS threads, or [`std::rc::Rc`]
+/// for green threads.
+pub struct Client {
     base_url: Url,
     client: ClientWithMiddleware,
 
@@ -175,28 +188,20 @@ struct ClientRef {
     token_factory: Option<TokenFactory>,
 }
 
-#[derive(Clone)]
-pub struct Client {
-    inner: Arc<ClientRef>,
-}
-
 impl Client {
+    /// Creates a [`ClientBuilder`].
     pub fn builder<'a>() -> ClientBuilder<'a> {
         ClientBuilder::new()
     }
 
-    /// Creates a push notification and returns the APNS ID.
+    /// Sends a push notification and returns the APNS ID.
     pub async fn post<T>(&self, request: Request<T>) -> Result<Uuid>
     where
         T: Serialize,
     {
-        let url = self.inner.base_url.join(&request.device_token)?;
+        let url = self.base_url.join(&request.device_token)?;
         let payload_size_limit = request.push_type.payload_size_limit();
-        let (mut headers, payload): (_, Payload<T>) = request.try_into()?;
-        headers.insert(
-            header::CONTENT_TYPE,
-            HeaderValue::from_static("application/json"),
-        );
+        let (headers, payload): (_, Payload<T>) = request.try_into()?;
 
         let body = serde_json::to_vec(&payload)?;
         if body.len() > payload_size_limit {
@@ -207,10 +212,10 @@ impl Client {
         }
 
         #[allow(unused_mut)]
-        let mut req = self.inner.client.post(url).headers(headers).body(body);
+        let mut req = self.client.post(url).headers(headers).body(body);
 
         #[cfg(feature = "jwt")]
-        if let Some(token_factory) = &self.inner.token_factory {
+        if let Some(token_factory) = &self.token_factory {
             let jwt = token_factory.get()?;
             req = req.bearer_auth(jwt);
         }

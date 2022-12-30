@@ -1,4 +1,4 @@
-use http::{HeaderMap, HeaderValue};
+use http::{header, HeaderMap, HeaderValue};
 use serde::Serialize;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -7,6 +7,7 @@ use crate::header::*;
 use crate::payload::*;
 use crate::result::{Error, Result};
 
+/// Apple Push Notification service request options.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Request<T = ()> {
     /// The hex-encoded device token.
@@ -146,6 +147,11 @@ where
 
     fn try_from(this: Request<T>) -> Result<Self> {
         let mut headers = HeaderMap::new();
+
+        headers.insert(
+            header::CONTENT_TYPE,
+            HeaderValue::from_static("application/json"),
+        );
 
         let _ = headers.insert(APNS_PUSH_TYPE.clone(), this.push_type.into());
 

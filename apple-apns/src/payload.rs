@@ -101,6 +101,7 @@ pub struct Aps {
     pub relevance_score: Option<f64>,
 }
 
+/// Alert options.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Alert {
     /// The title of the notification. Apple Watch displays this string in
@@ -113,7 +114,7 @@ pub struct Alert {
     pub subtitle: Option<String>,
 
     /// The content of the alert message.
-    pub body: String,
+    pub body: Option<String>,
 
     /// The name of the launch image file to display. If the user chooses to
     /// launch your app, the contents of the specified image or storyboard
@@ -161,6 +162,24 @@ pub struct Alert {
     pub loc_args: Option<Vec<String>>,
 }
 
+impl From<String> for Alert {
+    fn from(value: String) -> Self {
+        Alert {
+            body: Some(value),
+            ..Default::default()
+        }
+    }
+}
+
+impl<'a> From<&'a str> for Alert {
+    fn from(value: &'a str) -> Self {
+        Alert {
+            body: Some(value.to_string()),
+            ..Default::default()
+        }
+    }
+}
+
 impl<'de> Deserialize<'de> for Alert {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -180,7 +199,7 @@ impl<'de> Deserialize<'de> for Alert {
                 E: de::Error,
             {
                 Ok(Alert {
-                    body: v.into(),
+                    body: Some(v.into()),
                     ..Default::default()
                 })
             }
@@ -190,7 +209,7 @@ impl<'de> Deserialize<'de> for Alert {
                 E: de::Error,
             {
                 Ok(Alert {
-                    body: v,
+                    body: Some(v),
                     ..Default::default()
                 })
             }
@@ -200,20 +219,16 @@ impl<'de> Deserialize<'de> for Alert {
                 A: MapAccess<'de>,
             {
                 let mut alert = Alert::default();
-                let mut match_body = false;
 
                 while let Some(key) = map.next_key::<&str>()? {
                     match key {
                         "title" => alert.title = map.next_value()?,
-                        "subtitle" => alert.subtitle = map.next_value()?,
-                        "body" => {
-                            alert.body = map.next_value()?;
-                            match_body = true;
-                        }
                         "title-loc-key" => alert.title_loc_key = map.next_value()?,
                         "title-loc-args" => alert.title_loc_args = map.next_value()?,
+                        "subtitle" => alert.subtitle = map.next_value()?,
                         "subtitle-loc-key" => alert.subtitle_loc_key = map.next_value()?,
                         "subtitle-loc-args" => alert.subtitle_loc_args = map.next_value()?,
+                        "body" => alert.body = map.next_value()?,
                         "loc-key" => alert.loc_key = map.next_value()?,
                         "loc-args" => alert.loc_args = map.next_value()?,
                         "launch-image" => alert.launch_image = map.next_value()?,
@@ -222,12 +237,12 @@ impl<'de> Deserialize<'de> for Alert {
                                 field,
                                 &[
                                     "title",
-                                    "subtitle",
-                                    "body",
                                     "title-loc-key",
                                     "title-loc-args",
+                                    "subtitle",
                                     "subtitle-loc-key",
                                     "subtitle-loc-args",
+                                    "body",
                                     "loc-key",
                                     "loc-args",
                                     "launch-image",
@@ -235,10 +250,6 @@ impl<'de> Deserialize<'de> for Alert {
                             ));
                         }
                     }
-                }
-
-                if !match_body {
-                    return Err(de::Error::missing_field("body"));
                 }
 
                 Ok(alert)
@@ -255,81 +266,97 @@ impl Serialize for Alert {
         S: serde::Serializer,
     {
         if self.title.is_none()
-            && self.subtitle.is_none()
-            && self.launch_image.is_none()
             && self.title_loc_key.is_none()
             && self.title_loc_args.is_none()
+            && self.subtitle.is_none()
             && self.subtitle_loc_key.is_none()
             && self.subtitle_loc_args.is_none()
             && self.loc_key.is_none()
             && self.loc_args.is_none()
+            && self.launch_image.is_none()
         {
-            serializer.serialize_str(&self.body)
-        } else {
-            let mut len = 1;
-            if self.title.is_some() {
-                len += 1;
-            }
-            if self.subtitle.is_some() {
-                len += 1;
-            }
-            if self.title_loc_key.is_some() {
-                len += 1;
-            }
+            return serializer.serialize_str(self.body.as_deref().unwrap_or_default());
+        }
+
+        let mut len = 0;
+
+        // title
+        if self.title_loc_key.is_some() {
+            len += 1;
             if self.title_loc_args.is_some() {
                 len += 1;
             }
-            if self.subtitle_loc_key.is_some() {
-                len += 1;
-            }
+        } else if self.title.is_some() {
+            len += 1;
+        }
+
+        // subtitle
+        if self.subtitle_loc_key.is_some() {
+            len += 1;
             if self.subtitle_loc_args.is_some() {
                 len += 1;
             }
-            if self.loc_key.is_some() {
-                len += 1;
-            }
+        } else if self.subtitle.is_some() {
+            len += 1;
+        }
+
+        // body
+        if self.loc_key.is_some() {
+            len += 1;
             if self.loc_args.is_some() {
                 len += 1;
             }
-
-            let mut alert = serializer.serialize_map(Some(len))?;
-
-            if let Some(title_loc_key) = &self.title_loc_key {
-                alert.serialize_entry("title-loc-key", title_loc_key)?;
-                if let Some(title_loc_args) = &self.title_loc_args {
-                    alert.serialize_entry("title-loc-args", title_loc_args)?;
-                }
-            } else if let Some(title) = &self.title {
-                alert.serialize_entry("title", title)?;
-            }
-
-            if let Some(subtitle_loc_key) = &self.subtitle_loc_key {
-                alert.serialize_entry("subtitle-loc-key", subtitle_loc_key)?;
-                if let Some(subtitle_loc_args) = &self.subtitle_loc_args {
-                    alert.serialize_entry("subtitle-loc-args", subtitle_loc_args)?;
-                }
-            } else if let Some(subtitle) = &self.subtitle {
-                alert.serialize_entry("subtitle", subtitle)?;
-            }
-
-            if let Some(loc_key) = &self.loc_key {
-                alert.serialize_entry("loc-key", loc_key)?;
-                if let Some(loc_args) = &self.loc_args {
-                    alert.serialize_entry("loc-args", loc_args)?;
-                }
-            } else {
-                alert.serialize_entry("body", &self.body)?;
-            }
-
-            if let Some(launch_image) = &self.launch_image {
-                alert.serialize_entry("launch-image", launch_image)?;
-            }
-
-            alert.end()
+        } else {
+            len += 1;
         }
+
+        // launch-image
+        if self.launch_image.is_some() {
+            len += 1;
+        }
+
+        let mut alert = serializer.serialize_map(Some(len))?;
+
+        // title
+        if let Some(title_loc_key) = &self.title_loc_key {
+            alert.serialize_entry("title-loc-key", title_loc_key)?;
+            if let Some(title_loc_args) = &self.title_loc_args {
+                alert.serialize_entry("title-loc-args", title_loc_args)?;
+            }
+        } else if let Some(title) = &self.title {
+            alert.serialize_entry("title", title)?;
+        }
+
+        // subtitle
+        if let Some(subtitle_loc_key) = &self.subtitle_loc_key {
+            alert.serialize_entry("subtitle-loc-key", subtitle_loc_key)?;
+            if let Some(subtitle_loc_args) = &self.subtitle_loc_args {
+                alert.serialize_entry("subtitle-loc-args", subtitle_loc_args)?;
+            }
+        } else if let Some(subtitle) = &self.subtitle {
+            alert.serialize_entry("subtitle", subtitle)?;
+        }
+
+        // body
+        if let Some(loc_key) = &self.loc_key {
+            alert.serialize_entry("loc-key", loc_key)?;
+            if let Some(loc_args) = &self.loc_args {
+                alert.serialize_entry("loc-args", loc_args)?;
+            }
+        } else {
+            alert.serialize_entry("body", &self.body)?;
+        }
+
+        // launch-image
+        if let Some(launch_image) = &self.launch_image {
+            alert.serialize_entry("launch-image", launch_image)?;
+        }
+
+        alert.end()
     }
 }
 
+/// Sound options.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Sound {
     /// The critical alert flag. Set to `1` to enable the critical alert.
@@ -353,6 +380,26 @@ impl Default for Sound {
             critical: false,
             name: "default".into(),
             volume: 1.,
+        }
+    }
+}
+
+impl From<String> for Sound {
+    fn from(value: String) -> Self {
+        Self {
+            critical: false,
+            name: value,
+            volume: 0.,
+        }
+    }
+}
+
+impl<'a> From<&'a str> for Sound {
+    fn from(value: &'a str) -> Self {
+        Self {
+            critical: false,
+            name: value.to_string(),
+            volume: 0.,
         }
     }
 }
@@ -461,6 +508,7 @@ impl Serialize for Sound {
     }
 }
 
+/// Alert interruption level.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum InterruptionLevel {
@@ -522,16 +570,9 @@ mod test {
             .unwrap(),
             Payload {
                 aps: Aps {
-                    alert: Some(Alert {
-                        body: "Hello World!".into(),
-                        ..Default::default()
-                    }),
+                    alert: Some("Hello World!".into()),
                     badge: Some(11),
-                    sound: Some(Sound {
-                        critical: false,
-                        name: "default".into(),
-                        volume: 0.
-                    }),
+                    sound: Some("default".into()),
                     thread_id: Some("my-thread-id".into()),
                     category: Some("my-category".into()),
                     content_available: true,
@@ -557,10 +598,7 @@ mod test {
             .unwrap(),
             Payload::<TestUserInfo> {
                 aps: Aps {
-                    alert: Some(Alert {
-                        body: "Hello World!".into(),
-                        ..Default::default()
-                    }),
+                    alert: Some("Hello World!".into()),
                     ..Default::default()
                 },
                 user_info: Some(TestUserInfo {
@@ -576,16 +614,9 @@ mod test {
         assert_eq!(
             serde_json::to_value(&Payload {
                 aps: Aps {
-                    alert: Some(Alert {
-                        body: "Hello World!".into(),
-                        ..Default::default()
-                    }),
+                    alert: Some("Hello World!".into()),
                     badge: Some(11),
-                    sound: Some(Sound {
-                        critical: false,
-                        name: "default".into(),
-                        volume: 0.
-                    }),
+                    sound: Some("default".into()),
                     thread_id: Some("my-thread-id".into()),
                     category: Some("my-category".into()),
                     content_available: true,
@@ -615,10 +646,7 @@ mod test {
         assert_eq!(
             serde_json::to_value(&Payload::<TestUserInfo> {
                 aps: Aps {
-                    alert: Some(Alert {
-                        body: "Hello World!".into(),
-                        ..Default::default()
-                    }),
+                    alert: Some("Hello World!".into()),
                     ..Default::default()
                 },
                 user_info: Some(TestUserInfo {
@@ -642,7 +670,7 @@ mod test {
         assert_eq!(
             serde_json::from_str::<Alert>(&json!("Hello World!").to_string()).unwrap(),
             Alert {
-                body: "Hello World!".into(),
+                body: Some("Hello World!".into()),
                 ..Default::default()
             }
         );
@@ -655,7 +683,7 @@ mod test {
             )
             .unwrap(),
             Alert {
-                body: "Hello World!".into(),
+                body: Some("Hello World!".into()),
                 ..Default::default()
             }
         );
@@ -673,7 +701,7 @@ mod test {
             Alert {
                 title: Some("Title".into()),
                 subtitle: Some("Subtitle".into()),
-                body: "Hello World!".into(),
+                body: Some("Hello World!".into()),
                 launch_image: Some("http://example.com/img.png".into()),
                 ..Default::default()
             }
@@ -698,7 +726,7 @@ mod test {
             Alert {
                 title: Some("Title".into()),
                 subtitle: Some("Subtitle".into()),
-                body: "Hello World!".into(),
+                body: Some("Hello World!".into()),
                 launch_image: Some("http://example.com/img.png".into()),
                 title_loc_key: Some("REQUEST_FORMAT".into()),
                 title_loc_args: Some(vec!["Foo".into(), "Bar".into()]),
@@ -714,7 +742,7 @@ mod test {
     fn alert_ser() {
         assert_eq!(
             serde_json::to_string(&Alert {
-                body: "Hello World!".into(),
+                body: Some("Hello World!".into()),
                 ..Default::default()
             })
             .unwrap(),
@@ -724,7 +752,7 @@ mod test {
             serde_json::to_value(&Alert {
                 title: Some("Title".into()),
                 subtitle: Some("Subtitle".into()),
-                body: "Hello World!".into(),
+                body: Some("Hello World!".into()),
                 launch_image: Some("http://example.com/img.png".into()),
                 ..Default::default()
             })
@@ -740,7 +768,7 @@ mod test {
             serde_json::to_value(&Alert {
                 title: Some("Title".into()),
                 subtitle: Some("Subtitle".into()),
-                body: "Hello World!".into(),
+                body: Some("Hello World!".into()),
                 launch_image: Some("http://example.com/img.png".into()),
                 title_loc_key: Some("REQUEST_FORMAT".into()),
                 title_loc_args: Some(vec!["Foo".into(), "Bar".into()]),

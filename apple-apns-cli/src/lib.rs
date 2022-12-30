@@ -1,8 +1,9 @@
 use std::fs;
 
 use anyhow::Result;
-use bitski_apns::payload::{Alert, Sound};
-use bitski_apns::{Authentication, CertificateAuthority, ClientBuilder, Request};
+use apple_apns::{
+    Alert, Authentication, CertificateAuthority, ClientBuilder, InterruptionLevel, Request, Sound,
+};
 use clap::Parser;
 
 mod cli;
@@ -17,8 +18,8 @@ pub async fn main() -> Result<()> {
 
     let mut builder = ClientBuilder::new();
 
-    if let Some(server) = &cli.server {
-        builder.server = server;
+    if let Some(endpoint) = cli.endpoint {
+        builder.endpoint = endpoint;
     }
 
     if let Some(user_agent) = &cli.user_agent {
@@ -52,7 +53,7 @@ pub async fn main() -> Result<()> {
     let client = builder.build()?;
 
     let sound = cli.sound.map(|name| {
-        let critical = cli.interruption_level == Some(bitski_apns::InterruptionLevel::Critical);
+        let critical = cli.interruption_level == Some(InterruptionLevel::Critical);
         let mut sound = Sound {
             critical,
             name,
@@ -73,9 +74,9 @@ pub async fn main() -> Result<()> {
         topic: cli.topic,
         collapse_id: cli.collapse_id,
         alert: Some(Alert {
-            title: cli.title,
-            subtitle: cli.subtitle,
-            body: cli.body,
+            title: cli.title.map(Into::into),
+            subtitle: cli.subtitle.map(Into::into),
+            body: cli.body.map(Into::into),
             launch_image: cli.launch_image,
             ..Default::default()
         }),
