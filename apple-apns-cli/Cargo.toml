@@ -7,7 +7,7 @@ documentation = "https://docs.rs/apple-apns"
 license = "MIT"
 homepage = "https://github.com/BitskiCo/apple-apns"
 repository = "https://github.com/BitskiCo/apple-apns"
-keywords = ["apple", "apn", "apns", "aps", "ios", "notification", "push"]
+keywords = ["apple", "apn", "apns", "ios", "notification"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
