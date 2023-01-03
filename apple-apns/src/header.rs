@@ -3,7 +3,10 @@ use serde::{Deserialize, Serialize};
 use serde_plain::{derive_display_from_serialize, derive_fromstr_from_deserialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 
+/// Payload size limit for message types other than VoIP.
 pub const PAYLOAD_SIZE_LIMIT: usize = 4096;
+
+/// Payload size limit for the VoIP message type.
 pub const VOIP_PAYLOAD_SIZE_LIMIT: usize = 5120;
 
 /// (Required for watchOS 6 and later; recommended for macOS, iOS, tvOS, and
@@ -290,6 +293,7 @@ impl PushType {
     }
 }
 
+/// Push notification priority.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize_repr, Serialize_repr)]
 #[repr(u8)]
 pub enum Priority {

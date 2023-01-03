@@ -1,5 +1,0 @@
-[net]
-git-fetch-with-cli = true
-
-[registries]
-bitski-rust = { index = "https://dl.cloudsmith.io/basic/bitski/rust/cargo/index.git" }

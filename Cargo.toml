@@ -1,2 +1,2 @@
 [workspace]
-members = ["bitski-apns", "bitski-apns-cli"]
+members = ["apple-apns", "apple-apns-cli"]

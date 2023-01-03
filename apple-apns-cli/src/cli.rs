@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use anyhow::{anyhow, Result};
-use bitski_apns::{InterruptionLevel, Priority, PushType};
+use apple_apns::{Endpoint, InterruptionLevel, Priority, PushType};
 use clap::{ArgGroup, Parser};
 use humantime::parse_duration;
 use time::{format_description::well_known::Iso8601, OffsetDateTime};
@@ -43,7 +43,7 @@ pub struct Cli {
     pub team_id: Option<String>,
 
     #[arg(long, env)]
-    pub server: Option<String>,
+    pub endpoint: Option<Endpoint>,
 
     #[arg(long, env)]
     pub user_agent: Option<String>,
@@ -88,7 +88,7 @@ pub struct Cli {
 
     /// The content of the alert message.
     #[arg(long, env)]
-    pub body: String,
+    pub body: Option<String>,
 
     /// The name of the launch image file to display.
     #[arg(long, env)]
