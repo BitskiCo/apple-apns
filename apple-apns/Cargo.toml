@@ -1,6 +1,6 @@
 [package]
 name = "apple-apns"
-version = "0.5.0"
+version = "0.5.1"
 edition = "2021"
 description = "Rust client for Apple Push Notification service"
 documentation = "https://docs.rs/apple-apns"
@@ -26,6 +26,9 @@ thiserror = "1.0.37"
 time = { version = "0.3.17", features = ["serde"] }
 url = "2.3.1"
 uuid = { version = "1.2.2", features = ["serde"] }
+
+[dev-dependencies]
+reqwest-tracing = "0.4.0"
 
 [features]
 default = ["jwt", "rustls"]
