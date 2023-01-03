@@ -94,18 +94,26 @@ impl<'a> ClientBuilder<'a> {
     }
 
     /// Builds a `Client`.
-    pub fn build(&self) -> Result<Client> {
+    pub fn build(self) -> Result<Client> {
         let client = self.reqwest_client_builder()?.build();
         self.with_reqwest_middleware_client(client)
     }
 
     /// Builds a `Client` with middleware.
-    pub fn build_with_middleware<F>(&self, f: F) -> Result<Client>
+    ///
+    /// ```rust
+    /// use reqwest_tracing::{SpanBackendWithUrl, TracingMiddleware};
+    ///
+    /// let _client = apple_apns::ClientBuilder::new().build_with_middleware(|builder| {
+    ///     Ok(builder.with(TracingMiddleware::<SpanBackendWithUrl>::new()))
+    /// }).unwrap();
+    /// ```
+    pub fn build_with_middleware<F>(self, f: F) -> Result<Client>
     where
-        F: FnOnce(&mut reqwest_middleware::ClientBuilder) -> Result<()>,
+        F: FnOnce(reqwest_middleware::ClientBuilder) -> Result<reqwest_middleware::ClientBuilder>,
     {
-        let mut builder = self.reqwest_client_builder()?;
-        f(&mut builder)?;
+        let builder = self.reqwest_client_builder()?;
+        let builder = f(builder)?;
         self.with_reqwest_middleware_client(builder.build())
     }
 
