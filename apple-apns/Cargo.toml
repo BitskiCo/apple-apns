@@ -1,6 +1,6 @@
 [package]
 name = "apple-apns"
-version = "0.5.1"
+version = "0.5.2"
 edition = "2021"
 description = "Rust client for Apple Push Notification service"
 documentation = "https://docs.rs/apple-apns"
@@ -28,7 +28,11 @@ url = "2.3.1"
 uuid = { version = "1.2.2", features = ["serde"] }
 
 [dev-dependencies]
+apple-apns = { path = ".", features = ["http1"] }
 reqwest-tracing = "0.4.0"
+serde_json = "1.0.91"
+tokio = { version = "1.23.0", features = ["rt"] }
+wiremock = "0.5.16"
 
 [features]
 default = ["jwt", "rustls"]

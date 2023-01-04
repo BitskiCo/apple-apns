@@ -219,8 +219,12 @@ impl Client {
             });
         }
 
-        #[allow(unused_mut)]
-        let mut req = self.client.post(url).headers(headers).body(body);
+        let mut req = self.client.post(url).body(body);
+        for (name, value) in headers {
+            if let Some(name) = name {
+                req = req.header(name, value);
+            }
+        }
 
         #[cfg(feature = "jwt")]
         if let Some(token_factory) = &self.token_factory {
