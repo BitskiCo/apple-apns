@@ -5,14 +5,13 @@ on:
     paths:
       - .github/workflows/rust.yaml
       - "**.rs"
-      - "**.sql"
       - "**.toml"
-      - Cargo.lock
-      - docker-compose.yaml
-      - Dockerfile
   push:
-    branches: [main]
-    tags: ["*.*.*"]
+    branches:
+      - main
+    tags:
+      - "*.*.*"
+  workflow_dispatch: {}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -26,7 +25,7 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
-    container: ghcr.io/bitskico/rust-sdk
+    container: ghcr.io/jakelee8/rust-sdk
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -35,8 +34,8 @@ jobs:
         uses: actions/github-script@v6
         with:
           script: |
-            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
-            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL);
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN);
 
       - name: Sync Rustup with rust-toolchain.toml
         run: rustup show

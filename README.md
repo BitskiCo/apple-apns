@@ -10,7 +10,7 @@ for the official Apple developer documentation.
 
 ## Use with HTTP mocks
 
-By default, `bitski-apns` only makes HTTP2 connections. To allow HTTP1
+By default, `apple-apns` only makes HTTP2 connections. To allow HTTP1
 connections for compatibility with HTTP mock libraries that don't support HTTP2,
 enable the `http1` feature.
 

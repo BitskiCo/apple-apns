@@ -1,27 +1,26 @@
-name: Security audit
+name: Rust Audit
+
 on:
-  schedule:
-    - cron: "0 0 * * *"
   push:
     paths:
-      - .github/workflows/sec-audit.yaml
-      - "**/Cargo.toml"
-      - "**/Cargo.lock"
-      - "**/sec-audit.yaml"
+      - .github/workflows/audit.yaml
       - "**/audit.toml"
+      - "**/Cargo.toml"
+  schedule:
+    - cron: "0 0 * * *" # Daily at midnight UTC
 
 permissions:
   checks: write # audit result
   contents: read # git clone
 
 jobs:
-  security_audit:
+  audit:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Security audit
+      - name: Run cargo audit
         uses: actions-rs/audit-check@v1
         with:
           token: ${{ github.token }}

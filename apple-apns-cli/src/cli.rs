@@ -7,7 +7,7 @@ use humantime::parse_duration;
 use time::{format_description::well_known::Iso8601, OffsetDateTime};
 use uuid::Uuid;
 
-/// Bitski APNS
+/// Apple APNS
 #[derive(Parser)]
 #[command(author, version, about)]
 #[command(group(
